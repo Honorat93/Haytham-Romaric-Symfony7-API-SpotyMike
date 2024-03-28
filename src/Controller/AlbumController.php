@@ -98,7 +98,7 @@ public function add(Request $request, ValidatorInterface $validator): JsonRespon
             'year' => $album->getYear(),
             'artist' => [
                 'id' => $album->getArtistUserIdUser()->getId(),
-                'nom' => $album->getArtistUserIdUser()->getNom(),
+                'nom' => $album->getArtistUserIdUser()->getFullname(),
             ]
         ]);
     }

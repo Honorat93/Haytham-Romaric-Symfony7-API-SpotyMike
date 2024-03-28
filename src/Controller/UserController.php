@@ -13,8 +13,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use App\Entity\User;
 
-
-
 class UserController extends AbstractController
 {
 
@@ -65,6 +63,11 @@ class UserController extends AbstractController
             $existingUser = $this->userRepository->findOneBy(['email' => $email]);
             if ($existingUser) {
                 throw new \Exception('User existe déjà');
+            }
+
+            $existingUser = $this->userRepository->findOneBy(['idUser' => $idUser]);
+            if ($existingUser) {
+                throw new \Exception('Id existe déjà');
             }
 
             $user = new User();
@@ -159,6 +162,28 @@ class UserController extends AbstractController
 
             return $this->json([
                 'message' => 'User supprimé',
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'error' => 'Erreur: ' . $e->getMessage(),
+            ], JsonResponse::HTTP_NOT_FOUND);
+        }
+    }
+
+    #[Route('/user/{idUser}', name: 'get_user', methods: ['GET'])]
+    public function showUser(string $idUser): JsonResponse
+    {
+        try {
+            $user = $this->userRepository->findOneBy(['idUser' => $idUser]);
+
+            if (!$user) {
+                throw new \Exception('User pas trouvé');
+            }
+
+            $serializedUser = $this->serializer->serialize($user, 'json');
+
+            return $this->json([
+                'user' => json_decode($serializedUser, true),
             ]);
         } catch (\Exception $e) {
             return new JsonResponse([
