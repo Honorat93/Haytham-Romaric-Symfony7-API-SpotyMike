@@ -146,37 +146,4 @@ class PlaylistController extends AbstractController
         }
     }
 
-    #[Route('/playlist/{idPlaylist}', name: 'get_playlist_songs', methods: 'GET')]
-    public function getPlaylistSongs(int $idPlaylist): JsonResponse
-    {
-        try {
-            $playlist = $this->playlistRepository->find($idPlaylist);
-
-            if (!$playlist) {
-                throw new \Exception('Playlist non trouvée');
-            }
-
-            $songs = $playlist->getPlaylistHasSong();
-            $serializedSongs = $this->serializer->serialize($songs, 'json');
-
-            return $this->json([
-                'message' => 'Sons récupérés',
-                'songs' => json_decode($serializedSongs, true),
-            ]);
-        } catch (\Exception $e) {
-            return new JsonResponse([
-                'error' => 'Error: ' . $e->getMessage(),
-            ], JsonResponse::HTTP_NOT_FOUND);
-        }
-    }
-        
-    
-
-
-
-    
-
-
-
-
 }

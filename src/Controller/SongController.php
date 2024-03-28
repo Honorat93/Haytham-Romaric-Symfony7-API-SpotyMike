@@ -158,23 +158,4 @@ class SongController extends AbstractController
         }
     }
 
-    #[Route('/song', name: 'get_songs', methods: 'GET')]
-    public function showSong(): JsonResponse
-    {
-        try {
-            $songs = $this->songRepository->findAll();
-
-            $serializedSongs = $this->serializer->serialize($songs, 'json');
-
-            return $this->json([
-                'songs' => json_decode($serializedSongs, true),
-            ]);
-        } catch (\Exception $e) {
-            return new JsonResponse([
-                'error' => 'Error: ' . $e->getMessage(),
-            ], Response::HTTP_NOT_FOUND);
-        }
-    }
-
-
 }
