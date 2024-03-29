@@ -70,6 +70,18 @@ class SongController extends AbstractController
                 throw new \Exception('Sons existe déjà');
             }
 
+            if (strlen($title) > 255) {
+                throw new \Exception('titre trop long');
+            }
+
+            if (strlen($url) > 125) {
+                throw new \Exception('url trop long');
+            }
+
+            if (strlen($cover) > 125) {
+                throw new \Exception('cover trop long');
+            }
+
             $song = new Song();
             $song->setIdSong($idSong);
             $song->setTitle($title);
@@ -157,6 +169,5 @@ class SongController extends AbstractController
             ], Response::HTTP_BAD_REQUEST);
         }
     }
-
 
 }
