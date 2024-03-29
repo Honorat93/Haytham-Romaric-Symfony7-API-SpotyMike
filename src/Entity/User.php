@@ -10,7 +10,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-class User implements PasswordAuthenticatedUserInterface, UserInterface
+class User implements PasswordAuthenticatedUserInterface//, UserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -193,7 +193,7 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
         return $this;
     }
 
-    public function getRoles(): array
+    /* public function getRoles(): array
     {
         return ['ROLE_USER'];
     }
@@ -215,5 +215,5 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
     public function getUserIdentifier(): string
     {
         return $this->email;
-    }
+    } */
 }

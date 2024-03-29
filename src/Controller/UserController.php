@@ -58,42 +58,44 @@ class UserController extends AbstractController
                     ], JsonResponse::HTTP_BAD_REQUEST);
             }
 
-            if (strlen($firstName) > 55) {
-                throw new \Exception('nom trop long');
-            }
-            if (strlen($lastName) > 55) {
-                throw new \Exception('prenom trop long');
-            }
-
-            if (strlen($email) > 80) {
-                throw new \Exception('mail trop long');
-            }
-
-            if (strlen($password) > 90) {
-                throw new \Exception('mdp trop long');
-            }
-
-            if (strlen($tel) > 15) {
-                throw new \Exception('tel trop long');
+            if (strlen($idUser) > 90 || strlen($firstName) > 55 || strlen($lastName) > 55 || strlen($email) > 80 || strlen($password) > 90 || strlen($tel) > 15 || strlen($sexe) > 30) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => 'Une ou plusieurs données sont éronnées (Trop longues)',
+                    'data' => [
+                        'idUser' => $idUser,
+                        'firstName' => $firstName,
+                        'lastName' => $lastName,
+                        'email' => $email,
+                        'password' => $password,
+                        'tel' => $tel,
+                        'sexe' => $sexe,
+                    ],
+                ], JsonResponse::HTTP_CONFLICT);
             }
 
-            if (strlen($sexe) > 30) {
-                throw new \Exception('sexe trop long');
-            }
+
 
             $emailRegex = '/^\S+@\S+\.\S+$/';
             if (!preg_match($emailRegex, $email)) {
                 return new JsonResponse([
                     'error' => true,
-                    'message' => 'Format mail pas bon',
-                ], JsonResponse::HTTP_NOT_ACCEPTABLE);
+                    'message' => 'Une ou plusieurs données sont éronnées',
+                    'data' => [
+                        'email' => $email,
+                    ],
+                ], JsonResponse::HTTP_CONFLICT);
             }
+
             $phoneRegex = '/^\d{10}$/';
             if (!preg_match($phoneRegex, $tel)) {
                 return new JsonResponse([
                     'error' => true,
-                    'message' => 'Format tel pas bon',
-                ], JsonResponse::HTTP_NOT_ACCEPTABLE);
+                    'message' => 'Une ou plusieurs données sont éronnées',
+                    'data' => [
+                        'tel' => $tel,
+                    ],
+                ], JsonResponse::HTTP_CONFLICT);
             }
 
             $date = new \DateTime($birth);
@@ -110,10 +112,9 @@ class UserController extends AbstractController
             if ($existingUser) {
                return new JsonResponse([
                     'error' => true,
-                    'message' => 'Un compte utilisant cet adresse mail existe est déjà enregistré',
+                    'message' => 'Un compte utilisant cet adresse mail est déjà enregistré',
                 ], JsonResponse::HTTP_CONFLICT);
             }
-
 
 
             $user = new User();
@@ -126,19 +127,22 @@ class UserController extends AbstractController
             $user->setSexe($sexe);
             $user->setCreateAt(new \DateTimeImmutable());
             $user->setUpdateAt(new \DateTimeImmutable());
-            $user->setBirth(\DateTime::createFromFormat('Y-m-d', $birth));
+            $user->setBirth(new \DateTime($birth));
+
             $this->entityManager->persist($user);
             $this->entityManager->flush();
             
             $serealizedUser = $this->serializer->serialize($user, 'json' , ['ignored_attributes' => ['password', 'idUser', 'artist']]);
+            $userArray = json_decode($serealizedUser, true);
+            $userArray['birth'] = $user->getBirth()->format('Y-m-d');
             $user = $this->userRepository->findOneBy(['idUser' => $idUser]);
 
-            $token = $this->jwtManager->create($user);
+            //$token = $this->jwtManager->create($user);
             
             return $this->json([
                 'error' => 'false',
                 'message' => "L'utilisateur a bien été créé avec succès.",
-                'user' => json_decode($serealizedUser, true),
+                'user' => $userArray,
             ]);
         } catch (\Exception $e) {
             return new JsonResponse([
