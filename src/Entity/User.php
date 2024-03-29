@@ -6,10 +6,11 @@ use App\Repository\UserRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-class User implements PasswordAuthenticatedUserInterface
+class User implements PasswordAuthenticatedUserInterface, UserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -21,7 +22,10 @@ class User implements PasswordAuthenticatedUserInterface
     private ?string $idUser = null;
 
     #[ORM\Column(length: 55)]
-    private ?string $name = null;
+    private ?string $firstname = null;
+
+    #[ORM\Column(length: 55)]
+    private ?string $lastname = null;
 
     #[ORM\Column(length: 80)]
     private ?string $email = null;
@@ -31,6 +35,12 @@ class User implements PasswordAuthenticatedUserInterface
 
     #[ORM\Column(length: 15, nullable: true)]
     private ?string $tel = null;
+
+    #[ORM\Column(length: 30, nullable: true)]
+    private ?string $sexe = null;
+
+    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    private ?\DateTime $birth = null;
 
     #[ORM\Column]
     private ?\DateTimeImmutable $createAt = null;
@@ -58,14 +68,26 @@ class User implements PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getName(): ?string
+    public function getFirstName(): ?string
     {
-        return $this->name;
+        return $this->firstname;
     }
 
-    public function setName(string $name): static
+    public function setFirstName(string $firstname): static
     {
-        $this->name = $name;
+        $this->firstname = $firstname;
+
+        return $this;
+    }
+
+    public function getLastName(): ?string
+    {
+        return $this->lastname;
+    }
+
+    public function setLastName(string $lastname): static
+    {
+        $this->lastname = $lastname;
 
         return $this;
     }
@@ -99,6 +121,18 @@ class User implements PasswordAuthenticatedUserInterface
         return $this->tel;
     }
 
+    public function getSexe(): ?string
+    {
+        return $this->sexe;
+    }
+
+    public function setSexe(string $sexe): static
+    {
+        $this->sexe = $sexe;
+
+        return $this;
+    }
+
     public function setTel(?string $tel): static
     {
         $this->tel = $tel;
@@ -130,6 +164,18 @@ class User implements PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    public function getBirth(): ?\DateTimeInterface
+    {
+        return $this->birth;
+    }
+
+    public function setBirth(\DateTimeInterface $birth): static
+    {
+        $this->birth = $birth;
+
+        return $this;
+    }
+
     public function getArtist(): ?Artist
     {
         return $this->artist;
@@ -145,5 +191,29 @@ class User implements PasswordAuthenticatedUserInterface
         $this->artist = $artist;
 
         return $this;
+    }
+
+    public function getRoles(): array
+    {
+        return ['ROLE_USER'];
+    }
+
+    public function getSalt()
+    {
+        return null;
+    }
+
+    public function getUsername(): string
+    {
+        return $this->email;
+    }
+    
+    public function eraseCredentials(): void
+    {
+    }
+
+    public function getUserIdentifier(): string
+    {
+        return $this->email;
     }
 }
