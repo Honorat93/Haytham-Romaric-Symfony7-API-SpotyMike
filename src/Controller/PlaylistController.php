@@ -66,6 +66,14 @@ class PlaylistController extends AbstractController
                 throw new \Exception('Une playlist avec cet id existe déjà');
             }
 
+            if (strlen($idPlaylist) > 90) {
+                throw new \Exception('id trop long');
+            }
+
+            if (strlen($title) > 50) {
+                throw new \Exception('titre trop long');
+            }
+
             $playlist = new Playlist();
             $playlist->setIdPlaylist($idPlaylist);
             $playlist->setTitle($title);
@@ -100,6 +108,14 @@ class PlaylistController extends AbstractController
 
             if ($idPlaylist === null || $title === null || $public === null) {
                 throw new \Exception('Manque des données');
+            }
+
+            if (strlen($idPlaylist) > 90) {
+                throw new \Exception('id trop long');
+            }
+
+            if (strlen($title) > 50) {
+                throw new \Exception('titre trop long');
             }
 
             $playlist = $this->playlistRepository->findOneBy(["idPlaylist" => $idPlaylist]);
