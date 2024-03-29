@@ -114,30 +114,7 @@ class UserController extends AbstractController
                 ], JsonResponse::HTTP_CONFLICT);
             }
 
-            $existingUser = $this->userRepository->findOneBy(['idUser' => $idUser]);
-            if ($existingUser) {
-                throw new \Exception('Id existe déjà');
-            }
 
-            if (strlen($idUser) > 90) {
-                throw new \Exception('id trop long');
-            }
-
-            if (strlen($name) > 55) {
-                throw new \Exception('nom trop long');
-            }
-
-            if (strlen($email) > 80) {
-                throw new \Exception('mail trop long');
-            }
-
-            if (strlen($password) > 90) {
-                throw new \Exception('mdp trop long');
-            }
-
-            if (strlen($tel) > 15) {
-                throw new \Exception('tel trop long');
-            }
 
             $user = new User();
             $user->setIdUser($idUser);
