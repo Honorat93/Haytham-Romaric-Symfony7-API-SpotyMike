@@ -72,6 +72,7 @@ class Artist
     public function setFirstname(string $firstname): static
     {
         $this->firstname = $firstname;
+        $this->updateFullname(); // Mettre à jour le nom complet
 
         return $this;
     }
@@ -84,6 +85,7 @@ class Artist
     public function setLastname(string $lastname): static
     {
         $this->lastname = $lastname;
+        $this->updateFullname(); // Mettre à jour le nom complet
 
         return $this;
     }
@@ -167,5 +169,10 @@ class Artist
         }
 
         return $this;
+    }
+
+    private function updateFullname(): void
+    {
+        $this->fullname = $this->firstname . ' ' . $this->lastname;
     }
 }

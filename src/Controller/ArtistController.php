@@ -36,7 +36,7 @@ class ArtistController extends AbstractController
     public function creation(Request $request, ValidatorInterface $validator): JsonResponse
     {
         // Récupérer le token JWT de l'en-tête Authorization
-       $jwtToken = $request->headers->get('Authorization');
+      /*$jwtToken = $request->headers->get('Authorization');
         
         // Vérifier si le token JWT est présent
         if (!$jwtToken) {
@@ -51,7 +51,7 @@ class ArtistController extends AbstractController
             $decodedToken = $this->jwtManager->parse($jwtToken);
         } catch (\Exception $e) {
             return $this->json(['error' => 'Votre token n\'est pas correct'], Response::HTTP_UNAUTHORIZED);
-        }
+        }*/
         
         
 
@@ -75,7 +75,12 @@ class ArtistController extends AbstractController
 }
 
    // Vérifier la validité de l'utilisateur
-  if (!$user) {
+$user = $this->entityManager->getRepository(User::class)->findOneBy([
+    'firstname' => $firstname,
+    'lastname' => $lastname,
+]);
+
+if (!$user) {
     return $this->json(['error' => 'Utilisateur non trouvé'], Response::HTTP_NOT_FOUND);
 }
 
@@ -86,7 +91,7 @@ if (!$userBirthdate instanceof \DateTimeInterface) {
 }
 $age = $userBirthdate->diff(new \DateTime())->y;
 if ($age < 16) {
-    return $this->json(['error' => 'L\'âge de l\'utilisateur est inférieur à 16 ans'], Response::HTTP_BAD_REQUEST);
+    return $this->json(['error' => 'L\'âge de l\'utilisateur ne permet pas (16 ans)'], Response::HTTP_BAD_REQUEST);
 }
 
 // Vérifier que le fullname contient uniquement des lettres et des espaces
@@ -107,12 +112,21 @@ if (!preg_match('/^[a-zA-Z\s]+$/', $firstname) || !preg_match('/^[a-zA-Z\s]+$/',
     return $this->json(['error' => 'Le format du prénom ou du nom est invalide'], Response::HTTP_BAD_REQUEST);
 }
 
+// Vérifier s'il existe déjà un compte artiste pour cet utilisateur
+$existingArtistAccount = $this->artistRepository->findOneBy(['User_idUser' => $user]);
+if ($existingArtistAccount) {
+    return $this->json(['error' => 'Un compte utilisant est déjà un compte artiste'], Response::HTTP_CONFLICT);
+}
+
 
         // Vérifier s'il existe déjà un artiste avec le même nom
-        $existingArtistName = $this->artistRepository->findOneBy(['firstname' => $firstname, 'lastname' => $lastname]);
+        $existingArtistName = $this->artistRepository->findOneBy(['fullname' => $fullname]);
         if ($existingArtistName) {
-            return $this->json(['error' => 'Un artiste avec le même prénom et nom existe déjà'], Response::HTTP_CONFLICT);
+            return $this->json(['error' => 'Un compte avec ce nom d\'artiste est déjà enregistré'], Response::HTTP_CONFLICT);
         }
+
+
+
 
         // Créer une nouvelle instance de l'artiste
         $artist = new Artist();
@@ -222,5 +236,3 @@ if (!preg_match('/^[a-zA-Z\s]+$/', $firstname) || !preg_match('/^[a-zA-Z\s]+$/',
 
         return $this->json(['message' => 'Artiste supprimé']);
     }*/
-
-
