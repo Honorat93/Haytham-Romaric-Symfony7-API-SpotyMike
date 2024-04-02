@@ -4,5 +4,13 @@ controllers:
         namespace: App\Controller
     type: attribute
 
-api_login_check:
-    path: /api/login_check
+create_user:
+    path: /register
+    controller: App\Controller\UserController::createUser
+    methods: POST
+
+login_user:
+    path: /login
+    controller: App\Controller\UserController::login
+    methods: POST
+
