@@ -10,7 +10,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-class User implements PasswordAuthenticatedUserInterface//, UserInterface
+class User implements PasswordAuthenticatedUserInterface, UserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -121,6 +121,13 @@ class User implements PasswordAuthenticatedUserInterface//, UserInterface
         return $this->tel;
     }
 
+        public function setTel(?string $tel): static
+    {
+        $this->tel = $tel;
+
+        return $this;
+    }
+
     public function getSexe(): ?string
     {
         return $this->sexe;
@@ -133,9 +140,14 @@ class User implements PasswordAuthenticatedUserInterface//, UserInterface
         return $this;
     }
 
-    public function setTel(?string $tel): static
+    public function getBirth(): ?\DateTimeInterface
     {
-        $this->tel = $tel;
+        return $this->birth;
+    }
+
+    public function setBirth(\DateTimeInterface $birth): static
+    {
+        $this->birth = $birth;
 
         return $this;
     }
@@ -164,18 +176,6 @@ class User implements PasswordAuthenticatedUserInterface//, UserInterface
         return $this;
     }
 
-    public function getBirth(): ?\DateTimeInterface
-    {
-        return $this->birth;
-    }
-
-    public function setBirth(\DateTimeInterface $birth): static
-    {
-        $this->birth = $birth;
-
-        return $this;
-    }
-
     public function getArtist(): ?Artist
     {
         return $this->artist;
@@ -183,7 +183,6 @@ class User implements PasswordAuthenticatedUserInterface//, UserInterface
 
     public function setArtist(Artist $artist): static
     {
-        // set the owning side of the relation if necessary
         if ($artist->getUserIdUser() !== $this) {
             $artist->setUserIdUser($this);
         }
@@ -193,7 +192,9 @@ class User implements PasswordAuthenticatedUserInterface//, UserInterface
         return $this;
     }
 
-    /* public function getRoles(): array
+    
+
+public function getRoles(): array
     {
         return ['ROLE_USER'];
     }
@@ -215,5 +216,5 @@ class User implements PasswordAuthenticatedUserInterface//, UserInterface
     public function getUserIdentifier(): string
     {
         return $this->email;
-    } */
+    } 
 }
