@@ -13,82 +13,126 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 
 class ArtistController extends AbstractController
 {
     private $entityManager;
     private $artistRepository;
     private $serializer;
+    private $jwtManager;
 
-    public function __construct(EntityManagerInterface $entityManager, SerializerInterface $serializer)
+    public function __construct(EntityManagerInterface $entityManager, SerializerInterface $serializer, JWTTokenManagerInterface $jwtManager)
     {
         $this->entityManager = $entityManager;
         $this->artistRepository = $entityManager->getRepository(Artist::class);
         $this->serializer = $serializer;
+        $this->jwtManager = $jwtManager;
     }
 
     #[Route('/artist/creation', name: 'app_artist_creation', methods: ['POST'])]
-    public function creation(Request $request, ValidatorInterface $validator, SerializerInterface $serializer): JsonResponse
+    public function creation(Request $request, ValidatorInterface $validator): JsonResponse
     {
+        // Récupérer le token JWT de l'en-tête Authorization
+      /*$jwtToken = $request->headers->get('Authorization');
+        
+        // Vérifier si le token JWT est présent
+        if (!$jwtToken) {
+            return $this->json(['error' => 'Token non trouvé'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        // Supprimer le préfixe "Bearer " du token JWT
+        $jwtToken = str_replace('Bearer ', '', $jwtToken);
+
+        // Vérifier si le token JWT est valide
+        try {
+            $decodedToken = $this->jwtManager->parse($jwtToken);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Votre token n\'est pas correct'], Response::HTTP_UNAUTHORIZED);
+        }*/
+        
+        
+
         // Récupérer les données de la requête
-        $fullname = $request->request->get('fullname');
-        $label = $request->request->get('label');
-        $description = $request->request->get('description');
-        $User_idUser = $request->request->get('id_user');
+    $firstname = $request->request->get('firstname');
+    $fullname = $request->request->get('fullname');
+    $lastname = $request->request->get('lastname');
+    $label = $request->request->get('label');
+    $description = $request->request->get('description');
+    $User_idUser = $request->request->get('id_user');
 
-        // Vérifier si les champs requis sont présents dans la requête
-        $requiredFields = ['fullname', 'label'];
-        foreach ($requiredFields as $field) {
-            if (!$request->request->get($field)) {
-                return $this->json(['erreur' => 'Le champ ' . $field . ' est obligatoire'], Response::HTTP_BAD_REQUEST);
-            }
-        }
+    // Récupérer l'utilisateur
+    $user = $this->entityManager->getRepository(User::class)->find($User_idUser);
 
-        // Récupérer l'utilisateur
-        $user = $this->entityManager->getRepository(User::class)->find($User_idUser);
-
-        if (!$user) {
-            return $this->json(['erreur' => 'Utilisateur non trouvé'], Response::HTTP_NOT_FOUND);
-        }
-
-           // Vérifier que le fullname ne contient que des lettres
-    if (!preg_match('/^[a-zA-Z\s]+$/', $fullname)) {
-        $errors[] = 'Une ou plusieurs données sont éronnées';
+   // Vérifier si les champs requis sont présents dans la requête
+   $requiredFields = ['fullname', 'label'];
+   foreach ($requiredFields as $field) {
+    if (!$request->request->get($field)) {
+        return $this->json(['error' => 'Une ou plusieurs données sont manquantes'], Response::HTTP_BAD_REQUEST);
     }
+}
 
-    // Vérifier la longueur des données fullname et label
-    if (mb_strlen($fullname) > 90) {
-        $errors[] = 'Une ou plusieurs données sont éronnées';
-    }
-    if (mb_strlen($label) > 90) {
-        $errors[] = 'Une ou plusieurs données sont éronnées';
-    }
+   // Vérifier la validité de l'utilisateur
+$user = $this->entityManager->getRepository(User::class)->findOneBy([
+    'firstname' => $firstname,
+    'lastname' => $lastname,
+]);
 
-    if (!empty($errors)) {
-        return $this->json(['errors' => $errors], Response::HTTP_BAD_REQUEST);
-    }
+if (!$user) {
+    return $this->json(['error' => 'Utilisateur non trouvé'], Response::HTTP_NOT_FOUND);
+}
 
-          // Vérifier si un compte artiste existe déjà pour cet utilisateur
-          $existingArtist = $this->artistRepository->findOneBy(['User_idUser' => $user]);
-          if ($existingArtist) {
-              return $this->json(['erreur' => 'Un compte artiste est déjà associé à cet utilisateur'], Response::HTTP_CONFLICT);
-          }
+// Vérifier si l'utilisateur a au moins 16 ans
+$userBirthdate = $user->getBirth();
+if (!$userBirthdate instanceof \DateTimeInterface) {
+    return $this->json(['error' => 'La date de naissance de l\'utilisateur n\'est pas renseignée'], Response::HTTP_BAD_REQUEST);
+}
+$age = $userBirthdate->diff(new \DateTime())->y;
+if ($age < 16) {
+    return $this->json(['error' => 'L\'âge de l\'utilisateur ne permet pas (16 ans)'], Response::HTTP_BAD_REQUEST);
+}
+
+// Vérifier que le fullname contient uniquement des lettres et des espaces
+if (!preg_match('/^[a-zA-Z\s]+$/', $fullname)) {
+    return $this->json(['error' => 'Le format du nom complet est invalide'], Response::HTTP_BAD_REQUEST);
+}
+
+// Extraire le prénom et le nom de famille du fullname
+$names = explode(' ', $fullname);
+if (count($names) != 2) {
+    return $this->json(['error' => 'Le nom complet doit contenir un prénom et un nom de famille séparés par un espace'], Response::HTTP_BAD_REQUEST);
+}
+$firstname = $names[0];
+$lastname = $names[1];
+
+// Vérifier que le firstname et le lastname ne contiennent que des lettres
+if (!preg_match('/^[a-zA-Z\s]+$/', $firstname) || !preg_match('/^[a-zA-Z\s]+$/', $lastname)) {
+    return $this->json(['error' => 'Le format du prénom ou du nom est invalide'], Response::HTTP_BAD_REQUEST);
+}
+
+// Vérifier s'il existe déjà un compte artiste pour cet utilisateur
+$existingArtistAccount = $this->artistRepository->findOneBy(['User_idUser' => $user]);
+if ($existingArtistAccount) {
+    return $this->json(['error' => 'Un compte utilisant est déjà un compte artiste'], Response::HTTP_CONFLICT);
+}
+
 
         // Vérifier s'il existe déjà un artiste avec le même nom
         $existingArtistName = $this->artistRepository->findOneBy(['fullname' => $fullname]);
-        if ($existingArtistName !== null) {
-            return $this->json(['erreur' => 'Un artiste avec le même fullname existe déjà'], Response::HTTP_CONFLICT);
+        if ($existingArtistName) {
+            return $this->json(['error' => 'Un compte avec ce nom d\'artiste est déjà enregistré'], Response::HTTP_CONFLICT);
         }
 
-        // Valider le format du nom
-        if (!preg_match('/^[a-zA-Z\s]+$/', $fullname)) {
-            return $this->json(['erreur' => 'Le format du nom est invalide'], Response::HTTP_BAD_REQUEST);
-        }
+
+
 
         // Créer une nouvelle instance de l'artiste
         $artist = new Artist();
         $artist->setUserIdUser($user);
-        $artist->setFullname($fullname);
+        $artist->setFirstname($firstname);
+        $artist->setLastname($lastname);
         $artist->setLabel($label);
         $artist->setDescription($description);
 
@@ -107,14 +151,16 @@ class ArtistController extends AbstractController
         $this->entityManager->flush();
 
         // Sérialiser l'artiste pour la réponse
-        $serializedArtist = $serializer->serialize($artist, 'json', [AbstractNormalizer::IGNORED_ATTRIBUTES => ['__initializer__', '__cloner__', '__isInitialized__']]);
+        $serializedArtist = $this->serializer->serialize($artist, 'json', [AbstractNormalizer::IGNORED_ATTRIBUTES => ['__initializer__', '__cloner__', '__isInitialized__']]);
         
-        // Retourner une réponse JSON
-        return new JsonResponse(['artist' => json_decode($serializedArtist, true)], Response::HTTP_CREATED);
+        // Retourner une réponse JSON avec un message de succès
+        return new JsonResponse([
+            'artist' => json_decode($serializedArtist, true),
+            'error' => false,
+            'message' => 'Votre inscription a été bien prise en compte'
+        ], Response::HTTP_CREATED);
     }
 }
-
-
     
   /*  #[Route('/artist', name: 'app_artist_index', methods: ['GET'])]
     public function index(): JsonResponse
@@ -190,5 +236,3 @@ class ArtistController extends AbstractController
 
         return $this->json(['message' => 'Artiste supprimé']);
     }*/
-
-
