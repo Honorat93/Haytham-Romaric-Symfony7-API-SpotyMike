@@ -18,8 +18,8 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
     private ?int $id = null;
 
     // #[ORM\Id]
-    #[ORM\Column(length: 90)]
-    private ?string $idUser = null;
+   // #[ORM\Column(length: 90)]
+    //private ?string $idUser = null;
 
     #[ORM\Column(length: 55)]
     private ?string $firstname = null;
@@ -56,17 +56,17 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
         return $this->id;
     }
 
-    public function getIdUser(): ?string
+    /*public function getIdUser(): ?string
     {
         return $this->idUser;
-    }
+    }*/
 
-    public function setIdUser(string $idUser): static
+    /*public function setIdUser(string $idUser): static
     {
         $this->idUser = $idUser;
 
         return $this;
-    }
+    }*/
 
     public function getFirstName(): ?string
     {
@@ -133,12 +133,12 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
         return $this->sexe;
     }
 
-    public function setSexe(string $sexe): static
-    {
-        $this->sexe = $sexe;
+    public function setSexe(?string $sexe): static
+{
+    $this->sexe = $sexe;
 
-        return $this;
-    }
+    return $this;
+}
 
     public function getBirth(): ?\DateTimeInterface
     {
