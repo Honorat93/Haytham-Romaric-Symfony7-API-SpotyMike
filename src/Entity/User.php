@@ -56,17 +56,17 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
         return $this->id;
     }
 
-    /*public function getIdUser(): ?string
+    public function getIdUser(): ?string
     {
         return $this->idUser;
-    }*/
+    }
 
-    /*public function setIdUser(string $idUser): static
+    public function setIdUser(string $idUser): static
     {
         $this->idUser = $idUser;
 
         return $this;
-    }*/
+    }
 
     public function getFirstName(): ?string
     {
