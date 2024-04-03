@@ -142,8 +142,6 @@
                 $userArray = json_decode($serealizedUser, true);
                 $userArray['birth'] = $user->getBirth()->format('Y-m-d');
                 $user = $this->userRepository->findOneBy(['idUser' => $idUser]);
-
-                //$token = $this->jwtManager->create($user);
                 
                 return $this->json([
                     'error' => 'false',
@@ -296,30 +294,32 @@
             }
         }*/
 
-        /*#[Route('/user', name: 'delete_user', methods: ['DELETE'])]
-        public function deleteUser(Request $request,string $idUser): JsonResponse
+        #[Route('/user', name: 'delete_user', methods: ['DELETE'])]
+        public function deleteUser(): JsonResponse
         {
-            $token = $request->headers->get('Authorization');
-
             try {
-                $user = $this->userRepository->findOneBy(['idUser' => $idUser]);
 
-                if (!$user) {
-                    throw new \Exception('User pas trouvé');
-                }
+                $currentUser = $this->getUser()->getUserIdentifier();
 
+                $user = $this->userRepository->findOneBy(['email' => $currentUser]);
+                
                 $this->entityManager->remove($user);
                 $this->entityManager->flush();
 
                 return $this->json([
-                    'message' => 'User supprimé',
+                    'error' => 'false',
+                    'message' => 'Votre compte a été supprimé avec succès',
                 ]);
+
+                
             } catch (\Exception $e) {
                 return new JsonResponse([
                     'error' => 'Erreur: ' . $e->getMessage(),
                 ], JsonResponse::HTTP_NOT_FOUND);
             }
-        } */
+
+
+        }
 
         
 
