@@ -139,16 +139,14 @@ class Artist
         return $this;
     }
 
+    public function setFullname(string $fullname): void
+{
+    $this->fullname = $fullname;
+}
+
     public function getFullname(): ?string
     {
         return $this->fullname;
-    }
-
-    public function setFullname(string $fullname): static
-    {
-        $this->fullname = $fullname;
-
-        return $this;
     }
 
 
