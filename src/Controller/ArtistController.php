@@ -36,7 +36,7 @@ class ArtistController extends AbstractController
     public function creation(Request $request, ValidatorInterface $validator): JsonResponse
     {
         // Récupérer le token JWT de l'en-tête Authorization
-      /*$jwtToken = $request->headers->get('Authorization');
+      $jwtToken = $request->headers->get('Authorization');
         
         // Vérifier si le token JWT est présent
         if (!$jwtToken) {
@@ -51,7 +51,7 @@ class ArtistController extends AbstractController
             $decodedToken = $this->jwtManager->parse($jwtToken);
         } catch (\Exception $e) {
             return $this->json(['error' => 'Votre token n\'est pas correct'], Response::HTTP_UNAUTHORIZED);
-        }*/
+        }
         
         
 
