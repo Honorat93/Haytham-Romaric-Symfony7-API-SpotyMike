@@ -20,12 +20,6 @@ class Artist
     #[ORM\JoinColumn(nullable: false)]
     private ?User $User_idUser = null;
 
-    #[ORM\Column(length: 55)]
-    private ?string $firstname = null;
-
-    #[ORM\Column(length: 55)]
-    private ?string $lastname = null;
-
     #[ORM\Column(length: 90)]
     private ?string $fullname = null;
 
@@ -60,32 +54,6 @@ class Artist
     public function setUserIdUser(User $User_idUser): static
     {
         $this->User_idUser = $User_idUser;
-
-        return $this;
-    }
-
-    public function getFirstname(): ?string
-    {
-        return $this->firstname;
-    }
-
-    public function setFirstname(string $firstname): static
-    {
-        $this->firstname = $firstname;
-        $this->updateFullname(); // Mettre à jour le nom complet
-
-        return $this;
-    }
-
-    public function getLastname(): ?string
-    {
-        return $this->lastname;
-    }
-
-    public function setLastname(string $lastname): static
-    {
-        $this->lastname = $lastname;
-        $this->updateFullname(); // Mettre à jour le nom complet
 
         return $this;
     }
@@ -171,8 +139,17 @@ class Artist
         return $this;
     }
 
-    private function updateFullname(): void
+    public function getFullname(): ?string
     {
-        $this->fullname = $this->firstname . ' ' . $this->lastname;
+        return $this->fullname;
     }
+
+    public function setFullname(string $fullname): static
+    {
+        $this->fullname = $fullname;
+
+        return $this;
+    }
+
+
 }

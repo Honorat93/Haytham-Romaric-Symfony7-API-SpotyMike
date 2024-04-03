@@ -35,7 +35,7 @@ class ArtistController extends AbstractController
     #[Route('/artist/creation', name: 'app_artist_creation', methods: ['POST'])]
     public function creation(Request $request, ValidatorInterface $validator): JsonResponse
     {
-        // Récupérer le token JWT de l'en-tête Authorization
+       // Récupérer le token JWT de l'en-tête Authorization
       $jwtToken = $request->headers->get('Authorization');
         
         // Vérifier si le token JWT est présent
@@ -56,15 +56,19 @@ class ArtistController extends AbstractController
         
 
         // Récupérer les données de la requête
-    $firstname = $request->request->get('firstname');
     $fullname = $request->request->get('fullname');
-    $lastname = $request->request->get('lastname');
     $label = $request->request->get('label');
     $description = $request->request->get('description');
     $User_idUser = $request->request->get('id_user');
+    var_dump($User_idUser);
+// Vérifier si l'ID de l'utilisateur est présent dans la requête
+if (!$User_idUser) {
+    return $this->json(['error' => 'ID utilisateur manquant'], Response::HTTP_BAD_REQUEST);
+}
 
-    // Récupérer l'utilisateur
-    $user = $this->entityManager->getRepository(User::class)->find($User_idUser);
+// Récupérer l'utilisateur à partir de son ID
+$user = $this->entityManager->getRepository(User::class)->find($User_idUser);
+var_dump($user);
 
    // Vérifier si les champs requis sont présents dans la requête
    $requiredFields = ['fullname', 'label'];
@@ -74,11 +78,6 @@ class ArtistController extends AbstractController
     }
 }
 
-   // Vérifier la validité de l'utilisateur
-$user = $this->entityManager->getRepository(User::class)->findOneBy([
-    'firstname' => $firstname,
-    'lastname' => $lastname,
-]);
 
 if (!$user) {
     return $this->json(['error' => 'Utilisateur non trouvé'], Response::HTTP_NOT_FOUND);
@@ -97,19 +96,6 @@ if ($age < 16) {
 // Vérifier que le fullname contient uniquement des lettres et des espaces
 if (!preg_match('/^[a-zA-Z\s]+$/', $fullname)) {
     return $this->json(['error' => 'Le format du nom complet est invalide'], Response::HTTP_BAD_REQUEST);
-}
-
-// Extraire le prénom et le nom de famille du fullname
-$names = explode(' ', $fullname);
-if (count($names) != 2) {
-    return $this->json(['error' => 'Le nom complet doit contenir un prénom et un nom de famille séparés par un espace'], Response::HTTP_BAD_REQUEST);
-}
-$firstname = $names[0];
-$lastname = $names[1];
-
-// Vérifier que le firstname et le lastname ne contiennent que des lettres
-if (!preg_match('/^[a-zA-Z\s]+$/', $firstname) || !preg_match('/^[a-zA-Z\s]+$/', $lastname)) {
-    return $this->json(['error' => 'Le format du prénom ou du nom est invalide'], Response::HTTP_BAD_REQUEST);
 }
 
 // Vérifier s'il existe déjà un compte artiste pour cet utilisateur
@@ -131,8 +117,7 @@ if ($existingArtistAccount) {
         // Créer une nouvelle instance de l'artiste
         $artist = new Artist();
         $artist->setUserIdUser($user);
-        $artist->setFirstname($firstname);
-        $artist->setLastname($lastname);
+        $artist->setFullname($fullname);
         $artist->setLabel($label);
         $artist->setDescription($description);
 
