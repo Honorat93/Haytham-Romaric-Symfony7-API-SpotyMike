@@ -10,6 +10,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use App\Entity\Song;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\HttpFoundation\Response;
+use App\Repository\UserRepository;
 
 
 
@@ -18,43 +19,50 @@ class SongController extends AbstractController
     private $entityManager;
     private $songRepository;
     private $serializer;
+    private $userRepository;
 
-    public function __construct(EntityManagerInterface $entityManager, SerializerInterface $serializer)
+    public function __construct(EntityManagerInterface $entityManager, SerializerInterface $serializer, UserRepository $userRepository,)
     {
         $this->entityManager = $entityManager;
         $this->songRepository = $entityManager->getRepository(Song::class);
         $this->serializer = $serializer;
+        $this->userRepository = $userRepository;
     }
 
     #[Route('/song/{id}', name: 'get_song', methods: 'GET')]
     public function getSong(int $id): JsonResponse
     {
-        try{
-        $song = $this->songRepository->find($id);
+        try {
 
-        if (!$song) {
-            throw $this->createNotFoundException('Sons non trouvé');
+            $currentUser = $this->getUser()->getUserIdentifier();
+            $user = $this->userRepository->findOneBy(['email' => $currentUser]);
+
+            $song = $this->songRepository->find($id);
+
+            if(!$id){
+                return new JsonResponse([
+                    'error' => 'true',
+                    'message' => 'Une ou plusieurs données sont éronnées',
+                ], JsonResponse::HTTP_CONFLICT);
+            }
+
+            $serializedSong = $this->serializer->serialize($song, 'json', ['ignored_attributes' => ['idSong', 'visibility', 'url', 'visibility', 'artistIdUser', 'album', 'playlistHasSong']]);
+
+            return $this->json([
+                'error' => 'false',
+                'song' => json_decode($serializedSong, true),
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'error' => 'Error: ' . $e->getMessage(),
+            ], JsonResponse::HTTP_NOT_FOUND);
         }
-
-        $serializedSong = $this->serializer->serialize($song, 'json');
-
-        return $this->json([
-            'message' => 'Sons récupérée',
-            'song' => json_decode($serializedSong, true),
-        ]);
-    } catch (\Exception $e) {
-        return new JsonResponse([
-            'error' => 'Error: ' . $e->getMessage(),
-        ], JsonResponse::HTTP_NOT_FOUND);
-    }
-
-       
     }
 
     #[Route('/song/add', name: 'create_song', methods: 'POST')]
     public function createSong(Request $request): JsonResponse
     {
-        try{
+        try {
             $idSong = $request->request->get('idSong');
             $title = $request->request->get('title');
             $url = $request->request->get('url');
@@ -144,7 +152,6 @@ class SongController extends AbstractController
                 'error' => 'Error: ' . $e->getMessage(),
             ], Response::HTTP_BAD_REQUEST);
         }
-
     }
 
     #[Route('/song/delete/{id}', name: 'delete_song', methods: 'DELETE')]
@@ -156,7 +163,7 @@ class SongController extends AbstractController
             if (!$song) {
                 throw new \Exception('Sons non trouvée');
             }
-            
+
             $this->entityManager->remove($song);
             $this->entityManager->flush();
 
@@ -169,5 +176,4 @@ class SongController extends AbstractController
             ], Response::HTTP_BAD_REQUEST);
         }
     }
-
 }
