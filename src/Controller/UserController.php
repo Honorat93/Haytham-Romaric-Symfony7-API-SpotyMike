@@ -18,7 +18,7 @@ use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\CacheItem;
-
+use Symfony\Contracts\Cache\ItemInterface;
 
 class UserController extends AbstractController
 {
@@ -48,8 +48,8 @@ class UserController extends AbstractController
     {
         try {
             //$idUser = $request->request->get('idUser');
-            $firstName = $request->request->get('firstName');
-            $lastName = $request->request->get('lastName');
+            $firstName = $request->request->get('firstname');
+            $lastName = $request->request->get('lastname');
             $email = $request->request->get('email');
             $password = $request->request->get('password');
             $birth = $request->request->get('birth');
@@ -71,8 +71,8 @@ class UserController extends AbstractController
                     'message' => 'Une ou plusieurs données sont éronnées (Trop longues)',
                     'data' => [
                         //'idUser' => $idUser,
-                        'firstName' => $firstName,
-                        'lastName' => $lastName,
+                        'firstname' => $firstName,
+                        'lastname' => $lastName,
                         'email' => $email,
                         'password' => $password,
                         'tel' => $tel,
@@ -166,33 +166,46 @@ class UserController extends AbstractController
             if ($email === null || $password === null) {
                 return new JsonResponse([
                     'error' => true,
-                    'message' => 'Email/password manquants',
+                    'message' => 'Email/password manquants.',
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
             $emailRegex = '/^\S+@\S+\.\S+$/';
             if (!preg_match($emailRegex, $email)) {
                 return new JsonResponse([
                     'error' => true,
-                    'message' => 'Email/password incorrect',
+                    'message' => "Le format de l'email est invalide.",
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            $passwordRegex = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/';
+            if (!preg_match($passwordRegex, $password)) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre, un caractère spécial et 8 caractères minimum.",
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
 
             $cacheKeyAttempts = 'login_attempts_' . md5($email);
             $cacheKeyCooldown = 'login_cooldown_' . md5($email);
 
-            $loginAttempts = $cache->getItem($cacheKeyAttempts);
-            $loginAttemptsValue = $loginAttempts->get() ?? 0;
+            $loginAttemptsItem = $cache->getItem($cacheKeyAttempts);
+            $loginAttemptsData = $loginAttemptsItem->get();
+            $loginAttemptsValue = $loginAttemptsData['value'] ?? 0;
 
             $cooldownCacheItem = $cache->getItem($cacheKeyCooldown);
             $cooldownActive = $cooldownCacheItem->isHit();
 
             if ($loginAttemptsValue >= 5 && $cooldownActive) {
-                return new JsonResponse([
-                    'error' => true,
-                    'message' => 'Trop de tentatives sur l\'email ' . $email . ' (5 max) - Veuillez patienter (2min)',
-                ], JsonResponse::HTTP_TOO_MANY_REQUESTS);
-            } elseif ($loginAttemptsValue >= 5 && !$cooldownActive) {
-                $cache->deleteItem($cacheKeyAttempts);
+                $metadata = $loginAttemptsData['metadata'] ?? [];
+                if (isset($metadata['expiry'])) {
+                    $expiryTimestamp = $metadata['expiry'];
+                    $remainingMinutes = ($expiryTimestamp - time()) / 60;
+
+                    return new JsonResponse([
+                        'error' => true,
+                        'message' => "Trop de tentatives de connexion (5 max). Veuillez réessayer ultérieurement - " . $remainingMinutes . "min d'attente.",
+                    ], JsonResponse::HTTP_TOO_MANY_REQUESTS);
+                }
             }
 
             $user = $this->userRepository->findOneBy(['email' => $email]);
@@ -205,28 +218,32 @@ class UserController extends AbstractController
 
             if (!$this->passwordEncoder->isPasswordValid($user, $password)) {
                 $loginAttemptsValue++;
-                $loginAttempts->set($loginAttemptsValue);
-                $cache->save($loginAttempts);
+                $loginAttemptsItem->set([
+                    'value' => $loginAttemptsValue,
+                    'metadata' => [
+                        'expiry' => time() + 300,
+                    ]
+                ]);
+                $cache->save($loginAttemptsItem);
 
                 if ($loginAttemptsValue >= 5) {
                     $cooldownCacheItem->set(true);
-                    $cooldownCacheItem->expiresAfter(120);
+                    $cooldownCacheItem->expiresAfter(300);
                     $cache->save($cooldownCacheItem);
                 }
 
                 return new JsonResponse([
-                    'error' => true,
-                    'message' => 'Email/password incorrect',
-                ], JsonResponse::HTTP_UNAUTHORIZED);
+                        'error' => true,
+                        'message' => 'Email/password incorrect',
+                    ], JsonResponse::HTTP_UNAUTHORIZED);
             }
 
             $cache->deleteItem($cacheKeyAttempts);
-
             $artist = $user->getArtist();
 
             $userArray = [
-                'firstName' => $user->getFirstName(),
-                'lastName' => $user->getLastName(),
+                'firstname' => $user->getFirstName(),
+                'lastname' => $user->getLastName(),
                 'email' => $user->getEmail(),
                 'tel' => $user->getTel(),
                 'sexe' => $user->getSexe(),
