@@ -59,7 +59,7 @@ class UserController extends AbstractController
             if ($firstName === null || $lastName === null || $email === null || $password === null || $birth === null) {
                 return new JsonResponse([
                     'error' => true,
-                    'message' => 'Une ou plusieurs données obligatoires sont manquantes',
+                    'message' => 'Des champs obligatoires sont manquantes.',
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
 
@@ -85,11 +85,19 @@ class UserController extends AbstractController
             if (!preg_match($emailRegex, $email)) {
                 return new JsonResponse([
                     'error' => true,
-                    'message' => 'Une ou plusieurs données sont éronnées',
+                    'message' => 'Le format de l\'email est invalide.',
                     'data' => [
                         'email' => $email,
                     ],
-                ], JsonResponse::HTTP_CONFLICT);
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            $passwordRegex = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/';
+            if (!preg_match($passwordRegex, $password)) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre, un caractère spécial et 8 caractères minimum.",
+                ], JsonResponse::HTTP_BAD_REQUEST);
             }
 
             if ($tel !== null) {
@@ -97,29 +105,45 @@ class UserController extends AbstractController
                 if (!preg_match($phoneRegex, $tel)) {
                     return new JsonResponse([
                         'error' => true,
-                        'message' => 'Une ou plusieurs données sont éronnées',
+                        'message' => 'Le format du numéro de téléphone est invalide.',
                         'data' => [
                             'tel' => $tel,
                         ],
-                    ], JsonResponse::HTTP_CONFLICT);
+                    ], JsonResponse::HTTP_BAD_REQUEST);
                 }
             }
 
+            $birthRegex = '/^([0-2][0-9]|(3)[0-1])\/(0[1-9]|1[0-2])\/\d{4}$/';
+            if (!preg_match($birthRegex, $birth)) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => 'Le format de la date de naissance est invalide. Le format attendu est JJ/MM/AAAA.',
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            if ($sexe !== null && !in_array($sexe, ['0', '1'])) {
+                return new JsonResponse([
+                        'error' => true,
+                        'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.',
+                    ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            
             $date = new \DateTime($birth);
             $now = new \DateTime();
             $age = $now->diff($date)->y;
             if ($age < 12) {
                 return new JsonResponse([
                     'error' => true,
-                    'message' => "L'âge de l'utilisateur ne permet pas (12 ans)",
-                ], JsonResponse::HTTP_NOT_ACCEPTABLE);
+                    'message' => "L'utilisateur doit avoir au moins 12 ans.",
+                ], JsonResponse::HTTP_BAD_REQUEST);
             }
 
             $existingUser = $this->userRepository->findOneBy(['email' => $email]);
             if ($existingUser) {
                 return new JsonResponse([
                     'error' => true,
-                    'message' => 'Un compte utilisant cette adresse mail est déjà enregistré',
+                    'message' => 'Cet email est déjà utilisé par un autre compte.',
                 ], JsonResponse::HTTP_CONFLICT);
             }
 
