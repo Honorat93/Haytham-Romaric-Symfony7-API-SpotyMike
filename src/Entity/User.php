@@ -37,10 +37,10 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
     private ?string $tel = null;
 
     #[ORM\Column(length: 30, nullable: true)]
-    private ?string $sexe = null;
+    private ?bool $sexe = null;
 
     #[ORM\Column(type: Types::DATE_MUTABLE)]
-    private ?\DateTime $birth = null;
+    private ?\DateTime $datebirth = null;
 
     #[ORM\Column]
     private ?\DateTimeImmutable $createAt = null;
@@ -128,26 +128,26 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
         return $this;
     }
 
-    public function getSexe(): ?string
+    public function getSexe(): ?bool
     {
         return $this->sexe;
     }
 
-    public function setSexe(?string $sexe): static
-{
-    $this->sexe = $sexe;
+    public function setSexe(?bool $sexe): static
+    {
+        $this->sexe = $sexe;
 
-    return $this;
-}
+        return $this;
+    }
 
     public function getBirth(): ?\DateTimeInterface
     {
-        return $this->birth;
+        return $this->datebirth;
     }
 
     public function setBirth(\DateTimeInterface $birth): static
     {
-        $this->birth = $birth;
+        $this->datebirth = $birth;
 
         return $this;
     }
