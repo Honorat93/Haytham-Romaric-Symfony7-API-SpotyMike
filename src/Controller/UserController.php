@@ -19,6 +19,7 @@ use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\CacheItem;
 use Symfony\Contracts\Cache\ItemInterface;
+use App\Service\EmailService;
 
 class UserController extends AbstractController
 {
@@ -386,7 +387,50 @@ class UserController extends AbstractController
         }
     }
     
+#[Route('/password-lost', name: 'password_lost', methods: ['POST'])]
+    public function passwordLost(Request $request, /*EmailService $emailService*/): JsonResponse
+    {
+        try{
+ 
+        $email = $request->request->get('email');
 
+            if (empty($email)) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => 'Email manquant. Veuillez fournir votre email pour la récupération du mot de passe.',
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            $emailRegex = '/^\S+@\S+\.\S+$/';
+            if (!preg_match($emailRegex, $email)) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le format de l'e-mail est invalide. Veuillez entrer un e-mail valide.",
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+        $user = $this->userRepository->findOneBy(['email' => $email]);
+        if (!$user) {
+            return new JsonResponse([
+                'error' => true,
+                'message' => "Aucun compte n'est associé avec cet email. Veuillez vérifier et réessayer.",
+            ], JsonResponse::HTTP_NOT_FOUND);
+        }
+
+        //$emailService->sendEmail('recipient@example.com', 'Test Email', 'This is a test email.');
+
+        return $this->json([
+            'success' => 'true',
+            'message' => "Un email de récupération de mot de passe a été envoyé à votre adresse email. Veuillez suivre les instructions contenues dans l'email pour réinitialiser votre mot de passe.",
+        ]);
+    } catch (\Exception $e) {
+            return new JsonResponse([
+                'error' => 'Error: ' . $e->getMessage(),
+            ], JsonResponse::HTTP_NOT_FOUND);
+        }
+    }
+
+    
 
 
     /*     #[Route('/user/edit', name: 'edit_user', methods: 'PUT')]
