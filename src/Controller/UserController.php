@@ -86,9 +86,6 @@ class UserController extends AbstractController
                 return new JsonResponse([
                     'error' => true,
                     'message' => 'Le format de l\'email est invalide.',
-                    'data' => [
-                        'email' => $email,
-                    ],
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
 
@@ -106,9 +103,6 @@ class UserController extends AbstractController
                     return new JsonResponse([
                         'error' => true,
                         'message' => 'Le format du numéro de téléphone est invalide.',
-                        'data' => [
-                            'tel' => $tel,
-                        ],
                     ], JsonResponse::HTTP_BAD_REQUEST);
                 }
             }
@@ -295,6 +289,104 @@ class UserController extends AbstractController
         }
     }
 
+    #[Route('/user', name: 'update_user', methods: 'POST')]
+    public function updateUser(Request $request): JsonResponse
+    {
+        try {
+
+            if($currentUser = $this->getUser()->getUserIdentifier()){
+                $user = $this->userRepository->findOneBy(['email' => $currentUser]);
+            }else{
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => 'Vous devez être connecté pour effectuer cette action.',
+                ], JsonResponse::HTTP_UNAUTHORIZED);
+            }
+
+            $firstName = $request->request->get('firstname');
+            $lastName = $request->request->get('lastname');
+            $tel = $request->request->get('tel');
+            $sexe = $request->request->get('sexe');
+
+            if ($sexe !== null && !in_array($sexe, ['0', '1'])) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.',
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            if ($tel !== null) {
+                $phoneRegex = '/^\d{10}$/';
+                if (!preg_match($phoneRegex, $tel)) {
+                    return new JsonResponse([
+                        'error' => true,
+                        'message' => 'Le format du numéro de téléphone est invalide.',
+                        'data' => [
+                            'tel' => $tel,
+                        ],
+                    ], JsonResponse::HTTP_BAD_REQUEST);
+                }
+            }
+
+            if ($firstName !== null && strlen($firstName) > 55) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => 'Erreur de validation des données.',
+                ],
+                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY
+                );
+            }
+
+            if ($lastName !== null && strlen($lastName) > 55) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => 'Erreur de validation des données.',
+                ],
+                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY
+                );
+            }
+
+        
+
+            $existingUser = $this->userRepository->findOneBy(['tel' => $tel]);
+            if ($existingUser) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => 'Conflit de données. Le numéro de téléphone est déjà utilisé par un autre utilisateur.',
+                ], JsonResponse::HTTP_CONFLICT);
+            }
+
+            if ($firstName !== null) {
+                $user->setFirstName($firstName);
+            }
+
+            if ($lastName !== null) {
+                $user->setLastName($lastName);
+            }
+
+            if ($tel !== null) {
+                $user->setTel($tel);
+            }
+
+            if ($sexe !== null) {
+                $user->setSexe($sexe);
+            }
+
+            $this->entityManager->persist($user);   
+            $this->entityManager->flush();
+
+            return $this->json([
+                'error' => 'false',
+                'message' => 'Votre inscription a bien été prise en compte',
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'error' => 'Error: ' . $e->getMessage(),
+            ], JsonResponse::HTTP_NOT_FOUND);
+        }
+    }
+    
+
 
 
     /*     #[Route('/user/edit', name: 'edit_user', methods: 'PUT')]
@@ -350,7 +442,7 @@ class UserController extends AbstractController
             }
         }*/
 
-    #[Route('/user', name: 'delete_user', methods: ['DELETE'])]
+    /*#[Route('/user', name: 'delete_user', methods: ['DELETE'])]
     public function deleteUser(): JsonResponse
     {
         try {
@@ -371,5 +463,5 @@ class UserController extends AbstractController
                 'error' => 'Erreur: ' . $e->getMessage(),
             ], JsonResponse::HTTP_NOT_FOUND);
         }
-    }
+    }*/
 }
