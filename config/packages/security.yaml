@@ -43,7 +43,7 @@ security:
         - { path: ^/register, roles: PUBLIC_ACCESS }
         - { path: ^/password-lost, roles: PUBLIC_ACCESS }
         - { path: ^/reset-password/, roles: PUBLIC_ACCESS }
-        - { path: ^/,       roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/,       roles: PUBLIC_ACCESS }
         
 
 when@test:

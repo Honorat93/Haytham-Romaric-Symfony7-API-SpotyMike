@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Welcome!{% endblock %}</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #555;
+        }
+
+        .lyrics {
+            line-height: 1.6;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+    </style>
+    {% block stylesheets %}
+    {% endblock %}
+    {% block javascripts %}
+    {% endblock %}
+</head>
+<body>
+    <div class="container">
+        <h1>Le monde est méchant</h1>
+        <div class="lyrics">
+            <p>
+                MECHANT MECHANT GRRR PAW<br>
+                Le server marche <br>
+                <br>
+                
+            </p>
+        </div>
+    </div>
+</body>
+</html>
