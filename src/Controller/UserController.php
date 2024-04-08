@@ -153,11 +153,12 @@ class UserController extends AbstractController
             $user->setBirth(new \DateTime($birth));
             $user->setCreateAt(new \DateTimeImmutable());
             $user->setUpdateAt(new \DateTimeImmutable());
+            $user->setIsActive(true);
 
             $this->entityManager->persist($user);
             $this->entityManager->flush();
 
-            $serializedUser = $this->serializer->serialize($user, 'json', ['ignored_attributes' => ['id', 'password', 'idUser', 'artist', 'salt', 'username', 'userIdentifier', 'roles']]);
+            $serializedUser = $this->serializer->serialize($user, 'json', ['ignored_attributes' => ['id', 'password', 'idUser', 'artist', 'salt', 'username', 'userIdentifier', 'roles', 'resetToken', 'resetTokenExpiration', 'isActive']]);
             $userArray = json_decode($serializedUser, true);
             $userArray['birth'] = $user->getBirth()->format('Y-m-d');
             $user = $this->userRepository->findOneBy(['email' => $email]);
@@ -203,6 +204,16 @@ class UserController extends AbstractController
                     'message' => "Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre, un caractère spécial et 8 caractères minimum.",
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
+
+            //verify if user is active
+            $user = $this->userRepository->findOneBy(['email' => $email]);
+            if ($user && !$user->getIsActive()) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le compte n'est plus actif ou est suspendu.",
+                ], JsonResponse::HTTP_FORBIDDEN);
+            }
+
 
             $cacheKeyAttempts = 'login_attempts_' . md5($email);
             $cacheKeyCooldown = 'login_cooldown_' . md5($email);
@@ -531,6 +542,43 @@ class UserController extends AbstractController
             ], JsonResponse::HTTP_NOT_FOUND);
         }
     }
+
+    #[Route('/account-deactivation', name: 'desactivate_user', methods: 'DELETE')]
+    public function desactivateUser(): JsonResponse
+    {
+        try {
+            $currentUser = $this->getUser()->getUserIdentifier();
+            $user = $this->userRepository->findOneBy(['email' => $currentUser]);
+
+            if (!$user) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => 'Authentification requise. Vous devez être connecter pour effectuer cette action.',
+                ], JsonResponse::HTTP_UNAUTHORIZED);
+            }
+
+            if (!$user->getIsActive()) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => 'Le compte est déjà désactivé.',
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            $user->setIsActive(false);
+            $this->entityManager->flush();
+
+            return $this->json([
+                'error' => 'false',
+                'message' => 'Votre compte a été désactivé avec succès. Nous sommes désolés de vous voir partir.',
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'error' => 'Erreur: ' . $e->getMessage(),
+            ], JsonResponse::HTTP_NOT_FOUND);
+        }
+    }
+
+
 
     
     /*#[Route('/user', name: 'delete_user', methods: ['DELETE'])]
