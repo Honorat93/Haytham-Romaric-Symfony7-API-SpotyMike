@@ -17,10 +17,6 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
     #[ORM\Column]
     private ?int $id = null;
 
-    // #[ORM\Id]
-   // #[ORM\Column(length: 90)]
-    //private ?string $idUser = null;
-
     #[ORM\Column(length: 55)]
     private ?string $firstname = null;
 
@@ -51,22 +47,17 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
     #[ORM\OneToOne(mappedBy: 'User_idUser', cascade: ['persist', 'remove'])]
     private ?Artist $artist = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $resetToken = null;
+
+    #[ORM\Column(type: 'datetime', nullable: true)]
+    private ?\DateTimeInterface $resetTokenExpiration = null;
+
+
     public function getId(): ?int
     {
         return $this->id;
     }
-
-    /*public function getIdUser(): ?string
-    {
-        return $this->idUser;
-    }
-
-    public function setIdUser(string $idUser): static
-    {
-        $this->idUser = $idUser;
-
-        return $this;
-    }*/
 
     public function getFirstName(): ?string
     {
@@ -121,7 +112,7 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
         return $this->tel;
     }
 
-        public function setTel(?string $tel): static
+    public function setTel(?string $tel): static
     {
         $this->tel = $tel;
 
@@ -192,9 +183,7 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
         return $this;
     }
 
-    
-
-public function getRoles(): array
+    public function getRoles(): array
     {
         return ['ROLE_USER'];
     }
@@ -208,7 +197,7 @@ public function getRoles(): array
     {
         return $this->email;
     }
-    
+
     public function eraseCredentials(): void
     {
     }
@@ -216,5 +205,38 @@ public function getRoles(): array
     public function getUserIdentifier(): string
     {
         return $this->email;
-    } 
+    }
+
+    public function getResetToken(): ?string
+    {
+        return $this->resetToken;
+    }
+
+    public function setResetToken(?string $resetToken): static
+    {
+        $this->resetToken = $resetToken;
+
+        return $this;
+    }
+
+    public function getResetTokenExpiration(): ?\DateTimeInterface
+    {
+        return $this->resetTokenExpiration;
+    }
+
+    public function setResetTokenExpiration(?\DateTimeInterface $resetTokenExpiration): static
+    {
+        $this->resetTokenExpiration = $resetTokenExpiration;
+
+        return $this;
+    }
+
+    public function isResetTokenExpired(): bool
+    {
+        if ($this->resetTokenExpiration === null) {
+            return true;
+        }
+
+        return $this->resetTokenExpiration < new \DateTime();
+    }
 }
