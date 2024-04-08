@@ -218,7 +218,7 @@ class UserController extends AbstractController
                 $metadata = $loginAttemptsData['metadata'] ?? [];
                 if (isset($metadata['expiry'])) {
                     $expiryTimestamp = $metadata['expiry'];
-                    $remainingMinutes = ($expiryTimestamp - time()) / 60;
+                    $remainingMinutes = ceil(($expiryTimestamp - time()) / 60);
 
                     return new JsonResponse([
                         'error' => true,
@@ -386,13 +386,12 @@ class UserController extends AbstractController
             ], JsonResponse::HTTP_NOT_FOUND);
         }
     }
-    
-#[Route('/password-lost', name: 'password_lost', methods: ['POST'])]
-    public function passwordLost(Request $request, /*EmailService $emailService*/): JsonResponse
+
+    #[Route('/password-lost', name: 'password_lost', methods: ['POST'])]
+    public function passwordLost(Request $request, CacheItemPoolInterface $cache): JsonResponse
     {
-        try{
- 
-        $email = $request->request->get('email');
+        try {
+            $email = $request->request->get('email');
 
             if (empty($email)) {
                 return new JsonResponse([
@@ -409,21 +408,124 @@ class UserController extends AbstractController
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
 
-        $user = $this->userRepository->findOneBy(['email' => $email]);
-        if (!$user) {
+            $cacheKeyAttempts = 'reset_password_attempts_' . md5($email);
+            $cacheKeyCooldown = 'reset_password_cooldown_' . md5($email);
+
+            $resetPasswordAttemptsItem = $cache->getItem($cacheKeyAttempts);
+            $resetPasswordAttemptsData = $resetPasswordAttemptsItem->get();
+            $resetPasswordAttemptsValue = $resetPasswordAttemptsData['value'] ?? 0;
+
+            $cooldownCacheItem = $cache->getItem($cacheKeyCooldown);
+            $cooldownActive = $cooldownCacheItem->isHit();
+
+            if ($resetPasswordAttemptsValue >= 3 && $cooldownActive) {
+                $metadata = $resetPasswordAttemptsData['metadata'] ?? [];
+                if (isset($metadata['expiry'])) {
+                    $expiryTimestamp = $metadata['expiry'];
+                    $remainingMinutes = ceil(($expiryTimestamp - time()) / 60);
+
+                    return new JsonResponse([
+                        'error' => true,
+                        'message' => "Trop de tentatives de réinitialisation de mot de passe (3 max). Veuillez réessayer ultérieurement - $remainingMinutes min d'attente.",
+                    ], JsonResponse::HTTP_TOO_MANY_REQUESTS);
+                }
+            }
+
+            $user = $this->userRepository->findOneBy(['email' => $email]);
+            if ($user) {
+                $resetPasswordAttemptsValue++;
+                $resetPasswordAttemptsItem->set([
+                    'value' => $resetPasswordAttemptsValue,
+                    'metadata' => [
+                        'expiry' => time() + 300, // 5 minutes
+                    ]
+                ]);
+                $cache->save($resetPasswordAttemptsItem);
+
+                if ($resetPasswordAttemptsValue >= 3 && !$cooldownActive) {
+                    $cooldownCacheItem->set(true);
+                    $cooldownCacheItem->expiresAfter(300); // 5 minutes
+                    $cache->save($cooldownCacheItem);
+                }
+            }
+
+            if (!$user) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Aucun compte n'est associé avec cet email. Veuillez vérifier et réessayer.",
+                ], JsonResponse::HTTP_NOT_FOUND);
+            }
+
+            $resetToken = bin2hex(random_bytes(32));
+            $user->setResetToken($resetToken);
+            $user->setResetTokenExpiration(new \DateTimeImmutable('+2 minutes'));
+
+            $cache->deleteItem($cacheKeyAttempts);
+
+            $this->entityManager->persist($user);
+            $this->entityManager->flush();
+
             return new JsonResponse([
-                'error' => true,
-                'message' => "Aucun compte n'est associé avec cet email. Veuillez vérifier et réessayer.",
-            ], JsonResponse::HTTP_NOT_FOUND);
+                'success' => true,
+                'message' => "Un email de récupération de mot de passe a été envoyé à votre adresse email. Veuillez suivre les instructions contenues dans l'email pour réinitialiser votre mot de passe.",
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'error' => 'Error: ' . $e->getMessage(),
+            ], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
 
-        //$emailService->sendEmail('recipient@example.com', 'Test Email', 'This is a test email.');
 
-        return $this->json([
-            'success' => 'true',
-            'message' => "Un email de récupération de mot de passe a été envoyé à votre adresse email. Veuillez suivre les instructions contenues dans l'email pour réinitialiser votre mot de passe.",
-        ]);
-    } catch (\Exception $e) {
+
+
+    #[Route('/reset-password/{token}', name: 'reset_password', methods: ['POST'])]
+    public function resetPassword(Request $request): JsonResponse
+    {
+        try {
+            $token = $request->attributes->get('token');
+            $user = $this->userRepository->findOneBy(['resetToken' => $token]);
+            if (!$user) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Token de réinitialisation manquant ou invalide. Veuillez utiliser le lien fourni dans l'email de réinitialisation de mot de passe.",
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            $password = $request->request->get('password');
+            if (empty($password)) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => 'Veuillez fournir un nouveau mot de passe.',
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            $passwordRegex = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/';
+            if (!preg_match($passwordRegex, $password)) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre, un caractère spécial et 8 caractères minimum.",
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            if ($user->isResetTokenExpired()) {
+                $user->setResetToken(null);
+                $user->setResetTokenExpiration(null);
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le token de réinitialisation a expiré. Veuillez demander une nouvelle réinitialisation de mot de passe.",
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            $user->setPassword($this->passwordEncoder->hashPassword($user, $password));
+            $this->entityManager->persist($user);
+            $this->entityManager->flush();
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => "Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
+            ]);
+        } catch (\Exception $e) {
             return new JsonResponse([
                 'error' => 'Error: ' . $e->getMessage(),
             ], JsonResponse::HTTP_NOT_FOUND);
@@ -431,61 +533,6 @@ class UserController extends AbstractController
     }
 
     
-
-
-    /*     #[Route('/user/edit', name: 'edit_user', methods: 'PUT')]
-        public function editUser(Request $request): JsonResponse
-        {
-            try {
-                $idUser = $request->request->get('idUser');
-                $name = $request->request->get('name');
-                $email = $request->request->get('email');
-                $tel = $request->request->get('tel');
-
-                $user = $this->userRepository->findOneBy(['idUser' => $idUser]);
-                if (!$user) {
-                    throw new \Exception('User pas trouvé');
-                }
-
-                if ($name !== null) {
-                    $user->setName($name);
-                }
-                if ($email !== null) {
-                    $emailRegex = '/^\S+@\S+\.\S+$/';
-                    if (!preg_match($emailRegex, $email)) {
-                        throw new \Exception('Format mail pas bon');
-                    }
-                    $user->setEmail($email);
-                }
-                if ($tel !== null) {
-                    $phoneRegex = '/^\d{10}$/';
-                    if (!preg_match($phoneRegex, $tel)) {
-                        throw new \Exception('Format tel pas bon');
-                    }
-                    $user->setTel($tel);
-                }
-
-                $user->setName($name);
-                $user->setEmail($email);
-                $user->setTel($tel);
-
-                $user->setUpdateAt(new \DateTimeImmutable());
-                $this->entityManager->persist($user);
-                $this->entityManager->flush();
-
-                $serializedUser = $this->serializer->serialize($user, 'json');
-
-                return $this->json([
-                    'message' => 'User modifié',
-                    'user' => json_decode($serializedUser, true),
-                ]);
-            } catch (\Exception $e) {
-                return new JsonResponse([
-                    'error' => 'Error: ' . $e->getMessage(),
-                ], Response::HTTP_NOT_FOUND);
-            }
-        }*/
-
     /*#[Route('/user', name: 'delete_user', methods: ['DELETE'])]
     public function deleteUser(): JsonResponse
     {
