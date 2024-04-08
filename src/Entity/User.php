@@ -53,6 +53,10 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
     #[ORM\Column(type: 'datetime', nullable: true)]
     private ?\DateTimeInterface $resetTokenExpiration = null;
 
+    //is active
+    #[ORM\Column(type: 'boolean', options: ['default' => '1'])]
+    private ?bool $isActive;
+
 
     public function getId(): ?int
     {
@@ -239,4 +243,16 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
 
         return $this->resetTokenExpiration < new \DateTime();
     }
+
+    public function getIsActive(): ?bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): static
+    {
+        $this->isActive = $isActive;
+        return $this;
+    }
+    
 }
