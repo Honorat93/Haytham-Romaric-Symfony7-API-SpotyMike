@@ -35,10 +35,14 @@ class Artist
     #[ORM\OneToMany(targetEntity: Album::class, mappedBy: 'artist_User_idUser')]
     private Collection $albums;
 
+    #[ORM\ManyToMany(targetEntity: Label::class, mappedBy: 'artist_IdArtist')]
+    private Collection $labels;
+
     public function __construct()
     {
         $this->songs = new ArrayCollection();
         $this->albums = new ArrayCollection();
+        $this->labels = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -147,6 +151,33 @@ class Artist
     public function getFullname(): ?string
     {
         return $this->fullname;
+    }
+
+    /**
+     * @return Collection<int, Label>
+     */
+    public function getLabels(): Collection
+    {
+        return $this->labels;
+    }
+
+    public function addLabel(Label $label): static
+    {
+        if (!$this->labels->contains($label)) {
+            $this->labels->add($label);
+            $label->addArtistIdArtist($this);
+        }
+
+        return $this;
+    }
+
+    public function removeLabel(Label $label): static
+    {
+        if ($this->labels->removeElement($label)) {
+            $label->removeArtistIdArtist($this);
+        }
+
+        return $this;
     }
 
 
