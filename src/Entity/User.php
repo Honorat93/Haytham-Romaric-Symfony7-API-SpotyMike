@@ -53,7 +53,6 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
     #[ORM\Column(type: 'datetime', nullable: true)]
     private ?\DateTimeInterface $resetTokenExpiration = null;
 
-    //is active
     #[ORM\Column(type: 'boolean', options: ['default' => '1'])]
     private ?bool $isActive;
 
