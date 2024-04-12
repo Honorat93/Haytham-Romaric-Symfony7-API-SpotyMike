@@ -208,6 +208,7 @@ class ArtistController extends AbstractController
                 'error' => 'Error: ' . $e->getMessage(),
             ], JsonResponse::HTTP_NOT_FOUND);
         }
+        
     }
 
     #[Route('/artist', name: 'desactivate_artist', methods: 'DELETE')]
