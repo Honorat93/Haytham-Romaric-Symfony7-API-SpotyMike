@@ -37,6 +37,9 @@ class Artist
     #[ORM\JoinColumn(name: 'label_id', referencedColumnName: 'id', nullable: false)]
     private ?Label $label = null;
 
+    #[ORM\Column]
+    private ?\DateTimeImmutable $createAt = null;
+
     public function __construct()
     {
         $this->songs = new ArrayCollection();
@@ -146,6 +149,18 @@ class Artist
     public function setLabel(?Label $label): static
     {
         $this->label = $label;
+        return $this;
+    }
+
+    public function getCreateAt(): ?\DateTimeImmutable
+    {
+        return $this->createAt;
+    }
+
+    public function setCreateAt(\DateTimeImmutable $createAt): static
+    {
+        $this->createAt = $createAt;
+
         return $this;
     }
 }
