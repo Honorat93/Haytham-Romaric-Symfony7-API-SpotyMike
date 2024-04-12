@@ -486,7 +486,8 @@ class UserController extends AbstractController
 
             return new JsonResponse([
                 'success' => true,
-                'message' => "Un email de récupération de mot de passe a été envoyé à votre adresse email. Veuillez suivre les instructions contenues dans l'email pour réinitialiser votre mot de passe.",
+                'token' => $resetToken,
+                'message' => "Un email de réinitialisation de mot de passe a été envoyé à votre adresse email. Veuillez suivre les instructions contenues dans l'email pour réinitialiser votre mot de passe.",
             ]);
         } catch (\Exception $e) {
             return new JsonResponse([
