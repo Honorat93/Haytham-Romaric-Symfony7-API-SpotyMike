@@ -210,6 +210,44 @@ class ArtistController extends AbstractController
         }
     }
 
+    #[Route('/artist', name: 'desactivate_artist', methods: 'DELETE')]
+    public function desactivateArtist(): JsonResponse
+    {
+        try {
+            $currentUser = $this->getUser()->getUserIdentifier();
+            $user = $this->userRepository->findOneBy(['email' => $currentUser]);
+
+            $artist = $user->getArtist();
+
+            if (!$artist) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Compte artiste non trouvé. Vérifiez les informations fournies et réessayez.",
+                ], JsonResponse::HTTP_NOT_FOUND);
+            }
+
+            if ($artist->getIsActive() === false) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Ce compte artiste est déjà désactivé.",
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            $artist->setIsActive(false);
+
+            $this->entityManager->persist($artist);
+            $this->entityManager->flush();
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Le compte artiste a été désactivé avec succès.',
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'error' => 'Error: ' . $e->getMessage(),
+            ], JsonResponse::HTTP_NOT_FOUND);
+        }
+    }
 
     /*  #[Route('/artist', name: 'app_artist_index', methods: ['GET'])]
     public function index(): JsonResponse
