@@ -40,6 +40,9 @@ class Artist
     #[ORM\Column]
     private ?\DateTimeImmutable $createAt = null;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => '1'])]
+    private ?bool $isActive;
+
     public function __construct()
     {
         $this->songs = new ArrayCollection();
@@ -161,6 +164,17 @@ class Artist
     {
         $this->createAt = $createAt;
 
+        return $this;
+    }
+
+    public function getIsActive(): ?bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): static
+    {
+        $this->isActive = $isActive;
         return $this;
     }
 }
