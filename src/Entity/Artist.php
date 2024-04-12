@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use App\Entity\Label;
 
 #[ORM\Entity(repositoryClass: ArtistRepository::class)]
 class Artist
@@ -23,9 +24,6 @@ class Artist
     #[ORM\Column(length: 90)]
     private ?string $fullname = null;
 
-    #[ORM\Column(length: 90)]
-    private ?string $label = null;
-
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
@@ -35,14 +33,14 @@ class Artist
     #[ORM\OneToMany(targetEntity: Album::class, mappedBy: 'artist_User_idUser')]
     private Collection $albums;
 
-    #[ORM\ManyToMany(targetEntity: Label::class, mappedBy: 'artist_IdArtist')]
-    private Collection $labels;
+    #[ORM\ManyToOne(targetEntity: Label::class, inversedBy: 'artists')]
+    #[ORM\JoinColumn(name: 'label_id', referencedColumnName: 'id', nullable: false)]
+    private ?Label $label = null;
 
     public function __construct()
     {
         $this->songs = new ArrayCollection();
         $this->albums = new ArrayCollection();
-        $this->labels = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -58,18 +56,6 @@ class Artist
     public function setUserIdUser(User $User_idUser): static
     {
         $this->User_idUser = $User_idUser;
-
-        return $this;
-    }
-
-    public function getLabel(): ?string
-    {
-        return $this->label;
-    }
-
-    public function setLabel(string $label): static
-    {
-        $this->label = $label;
 
         return $this;
     }
@@ -134,7 +120,6 @@ class Artist
     public function removeAlbum(Album $album): static
     {
         if ($this->albums->removeElement($album)) {
-            // set the owning side to null (unless already changed)
             if ($album->getArtistUserIdUser() === $this) {
                 $album->setArtistUserIdUser(null);
             }
@@ -144,41 +129,23 @@ class Artist
     }
 
     public function setFullname(string $fullname): void
-{
-    $this->fullname = $fullname;
-}
+    {
+        $this->fullname = $fullname;
+    }
 
     public function getFullname(): ?string
     {
         return $this->fullname;
     }
 
-    /**
-     * @return Collection<int, Label>
-     */
-    public function getLabels(): Collection
+    public function getLabel(): ?Label
     {
-        return $this->labels;
+        return $this->label;
     }
 
-    public function addLabel(Label $label): static
+    public function setLabel(?Label $label): static
     {
-        if (!$this->labels->contains($label)) {
-            $this->labels->add($label);
-            $label->addArtistIdArtist($this);
-        }
-
+        $this->label = $label;
         return $this;
     }
-
-    public function removeLabel(Label $label): static
-    {
-        if ($this->labels->removeElement($label)) {
-            $label->removeArtistIdArtist($this);
-        }
-
-        return $this;
-    }
-
-
 }

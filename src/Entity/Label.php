@@ -18,12 +18,15 @@ class Label
     #[ORM\Column(length: 255)]
     private ?string $name = null;
 
-    #[ORM\ManyToMany(targetEntity: artist::class, inversedBy: 'labels')]
-    private Collection $artist_IdArtist;
+    #[ORM\Column(length: 255)]
+    private ?string $idLabel = null;
+
+    #[ORM\OneToMany(targetEntity: Artist::class, mappedBy: 'label')]
+    private Collection $artist;
 
     public function __construct()
     {
-        $this->artist_IdArtist = new ArrayCollection();
+        $this->artist = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -43,29 +46,43 @@ class Label
         return $this;
     }
 
-    /**
-     * @return Collection<int, artist>
-     */
-    public function getArtistIdArtist(): Collection
+    public function getIdLabel(): ?string
     {
-        return $this->artist_IdArtist;
+        return $this->idLabel;
     }
 
-    public function addArtistIdArtist(artist $artistIdArtist): static
+    public function setIdLabel(string $idLabel): static
     {
-        if (!$this->artist_IdArtist->contains($artistIdArtist)) {
-            $this->artist_IdArtist->add($artistIdArtist);
+        $this->idLabel = $idLabel;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Artist>
+     */
+    public function getArtist(): Collection
+    {
+        return $this->artist;
+    }
+
+    public function addArtist(Artist $artist): static
+    {
+        if (!$this->artist->contains($artist)) {
+            $this->artist->add($artist);
+            $artist->setLabel($this);
         }
 
         return $this;
     }
 
-    public function removeArtistIdArtist(artist $artistIdArtist): static
+    public function removeArtist(Artist $artist): static
     {
-        $this->artist_IdArtist->removeElement($artistIdArtist);
+        if ($this->artist->removeElement($artist)) {
+            $artist->setLabel(null);
+        }
 
         return $this;
     }
-
     
 }
