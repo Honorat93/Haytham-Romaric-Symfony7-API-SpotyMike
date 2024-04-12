@@ -60,6 +60,7 @@ class ArtistController extends AbstractController
             $description = $request->request->has('description') ? $request->request->get('description') : null;
             $User_idUser = $request->request->get('id');
 
+
             if ($fullname === null || $idLabel === null) {
                 return new JsonResponse([
                     'error' => true,
@@ -117,13 +118,9 @@ class ArtistController extends AbstractController
             $artist->setLabel($label);
             $artist->setCreateAt(new \DateTimeImmutable());
 
-
-
-            // Persister et sauvegarder l'artiste
             $this->entityManager->persist($artist);
             $this->entityManager->flush();
 
-            // Retourner une réponse JSON avec un message de succès
             return new JsonResponse([
                 'success' => true,
                 'message' => 'Votre compte d\'artist a été crée avec succès. Bienvenue dans notre communauté d\'artistes!',
@@ -164,12 +161,12 @@ class ArtistController extends AbstractController
             $user = $artist->getUserIdUser();
 
             $artistArray = [
-                    'firstname' => $user->getFirstname(),
-                    'lastname' => $user->getLastname(),
-                    'sexe' => $user->getSexe(),
-                    'datebirth' => $user->getBirth()->format('Y-m-d'),
-                    'Artist.createdAt' => $artist->getCreateAt()->format('Y-m-d'),
-                ];
+                'firstname' => $user->getFirstname(),
+                'lastname' => $user->getLastname(),
+                'sexe' => $user->getSexe(),
+                'datebirth' => $user->getBirth()->format('Y-m-d'),
+                'Artist.createdAt' => $artist->getCreateAt()->format('Y-m-d'),
+            ];
 
             $albums = $artist->getAlbums();
             $albumsArray = [];
@@ -208,8 +205,73 @@ class ArtistController extends AbstractController
                 'error' => 'Error: ' . $e->getMessage(),
             ], JsonResponse::HTTP_NOT_FOUND);
         }
-        
     }
+
+    #[Route('/artist', name: 'update_artist', methods: ['POST'])]
+    public function updateArtist(Request $request): JsonResponse
+    {
+        try {
+            $currentUser = $this->getUser()->getUserIdentifier();
+            $user = $this->userRepository->findOneBy(['email' => $currentUser]);
+
+            $artist = $user->getArtist();
+
+
+
+            if (!$artist) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Artiste non trouvé. Veuillez vérifier les informations fournies.",
+                ], JsonResponse::HTTP_NOT_FOUND);
+            }
+
+            if ($user->getArtist() === null) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Mise à jour non autorisée. Vous n'avez pas les droits requis pour modifier les informations de cet artiste.",
+                ], JsonResponse::HTTP_FORBIDDEN);
+            }
+
+            if ($artist->getUserIdUser() !== $user) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Vous nêtes pas autorisé à accéder aux informations de cet artiste.",
+                ], JsonResponse::HTTP_FORBIDDEN);
+            }
+
+            //fullname deja existant
+            $fullname = $request->request->get('fullname');
+            $artistExist = $this->artistRepository->findOneBy(['fullname' => $fullname]);
+            if ($artistExist) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le nom d'artiste est déjà utilisé. Veuillez choisir un autre nom.",
+                ], JsonResponse::HTTP_CONFLICT);
+            }
+
+
+            $fullname = $request->request->has('fullname') ? $request->request->get('fullname') : null;
+            $description = $request->request->has('description') ? $request->request->get('description') : null;
+            $label = $request->request->has('label') ? $request->request->get('label') : null;
+
+            $artist->setFullname($fullname);
+            $artist->setDescription($description);
+            $artist->setLabel($label);
+
+            $this->entityManager->persist($artist);
+            $this->entityManager->flush();
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Le compte artiste a été mis à jour avec succès.',
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'error' => 'Error: ' . $e->getMessage(),
+            ], JsonResponse::HTTP_NOT_FOUND);
+        }
+    }
+
 
     #[Route('/artist', name: 'desactivate_artist', methods: 'DELETE')]
     public function desactivateArtist(): JsonResponse
@@ -231,7 +293,7 @@ class ArtistController extends AbstractController
                 return new JsonResponse([
                     'error' => true,
                     'message' => "Ce compte artiste est déjà désactivé.",
-                ], JsonResponse::HTTP_BAD_REQUEST);
+                ], JsonResponse::HTTP_GONE);
             }
 
             $artist->setIsActive(false);
