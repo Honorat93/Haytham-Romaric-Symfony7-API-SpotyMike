@@ -30,6 +30,9 @@ class Album
     #[ORM\Column]
     private ?int $year = 2024;
 
+    #[ORM\Column]
+    private ?\DateTimeImmutable $createAt = null;
+
     #[ORM\ManyToOne(inversedBy: 'albums')]
     private ?Artist $artist_User_idUser = null;
 
@@ -147,4 +150,17 @@ class Album
 
         return $this;
     }
+
+    public function getCreateAt(): ?\DateTimeImmutable
+    {
+        return $this->createAt;
+    }
+
+    public function setCreateAt(\DateTimeImmutable $createAt): static
+    {
+        $this->createAt = $createAt;
+
+        return $this;
+    }
+    
 }

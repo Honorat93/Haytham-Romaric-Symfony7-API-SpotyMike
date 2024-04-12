@@ -21,6 +21,8 @@ use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use App\Repository\UserRepository;
 use App\Repository\ArtistRepository;
 use App\Entity\Label;
+use app\Entity\Album;
+use app\Entity\Song;
 
 
 class ArtistController extends AbstractController
@@ -109,12 +111,13 @@ class ArtistController extends AbstractController
 
 
             $artist = new Artist();
-            
+
             $artist->setUserIdUser($user);
             $artist->setFullname($fullname);
             $artist->setLabel($label);
+            $artist->setCreateAt(new \DateTimeImmutable());
 
-            
+
 
             // Persister et sauvegarder l'artiste
             $this->entityManager->persist($artist);
@@ -130,9 +133,85 @@ class ArtistController extends AbstractController
             return $this->json(['erreur' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
     }
-}
-    
-  /*  #[Route('/artist', name: 'app_artist_index', methods: ['GET'])]
+
+    #[Route('/artist/{fullname}', name: 'get_artist', methods: ['GET'])]
+    public function getArtist(string $fullname): JsonResponse
+    {
+        try {
+            $currentUser = $this->getUser();
+            if (!$currentUser) {
+                throw new AuthenticationException('Utilisateur non authentifié.');
+            }
+
+            $user = $this->userRepository->findOneBy(['email' => $currentUser->getUserIdentifier()]);
+
+            $artist = $this->artistRepository->findOneBy(['fullname' => $fullname]);
+
+            if (!$artist) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Aucun artiste trouvé correspondant au nom fourni.",
+                ], JsonResponse::HTTP_NOT_FOUND);
+            }
+
+            if ($artist->getFullname() === null) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le nom d'artiste est obligatoire pour cette requête.",
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            $user = $artist->getUserIdUser();
+
+            $artistArray = [
+                    'firstname' => $user->getFirstname(),
+                    'lastname' => $user->getLastname(),
+                    'sexe' => $user->getSexe(),
+                    'datebirth' => $user->getBirth()->format('Y-m-d'),
+                    'Artist.createdAt' => $artist->getCreateAt()->format('Y-m-d'),
+                ];
+
+            $albums = $artist->getAlbums();
+            $albumsArray = [];
+            foreach ($albums as $album) {
+                $albumsArray[] = [
+                    'id' => $album->getId(),
+                    'nom' => $album->getNom(),
+                    'categ' => $album->getCateg(),
+                    'label' => $artist->getLabel(),
+                    'cover' => $album->getCover(),
+                    'year' => $album->getYear(),
+                    'createdAt' => $album->getCreateAt()->format('Y-m-d'),
+                ];
+            }
+
+            $songs = $artist->getSongs();
+            $songsArray = [];
+            foreach ($songs as $song) {
+                $songsArray[] = [
+                    'id' => $song->getId(),
+                    'title' => $song->getTitle(),
+                    'cover' => $song->getCover(),
+                    'createdAt' => $song->getCreateAt()->format('Y-m-d'),
+                ];
+            }
+
+            $artistArray['albums'] = $albumsArray;
+            $artistArray['songs'] = $songsArray;
+
+            return $this->json([
+                'error' => false,
+                'artist' => $artistArray,
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'error' => 'Error: ' . $e->getMessage(),
+            ], JsonResponse::HTTP_NOT_FOUND);
+        }
+    }
+
+
+    /*  #[Route('/artist', name: 'app_artist_index', methods: ['GET'])]
     public function index(): JsonResponse
     {
         $artists = $this->artistRepository->findAll();
@@ -206,3 +285,4 @@ class ArtistController extends AbstractController
 
         return $this->json(['message' => 'Artiste supprimé']);
     }*/
+}
