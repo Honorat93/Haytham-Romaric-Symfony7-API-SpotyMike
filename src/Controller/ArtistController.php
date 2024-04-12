@@ -18,127 +18,117 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Component\Security\Http\Authentication\AuthenticationFailureHandlerInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use App\Repository\UserRepository;
+use App\Repository\ArtistRepository;
+use App\Entity\Label;
+
 
 class ArtistController extends AbstractController
 {
     private $entityManager;
     private $artistRepository;
     private $serializer;
+    private $userRepository;
     private $jwtManager;
 
-    public function __construct(EntityManagerInterface $entityManager, SerializerInterface $serializer, JWTTokenManagerInterface $jwtManager)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        SerializerInterface $serializer,
+        JWTTokenManagerInterface $jwtManager,
+        UserRepository $userRepository,
+        ArtistRepository $artistRepository
+    ) {
         $this->entityManager = $entityManager;
-        $this->artistRepository = $entityManager->getRepository(Artist::class);
+        $this->artistRepository = $artistRepository;
         $this->serializer = $serializer;
         $this->jwtManager = $jwtManager;
+        $this->userRepository = $userRepository;
     }
 
-    #[Route('/artist/creation', name: 'app_artist_creation', methods: ['POST'])]
-    public function creation(Request $request, ValidatorInterface $validator): JsonResponse
+    #[Route('/artist', name: 'create_artist', methods: ['POST'])]
+    public function createArtist(Request $request): JsonResponse
     {
-    // Récupérer le token JWT de l'en-tête Authorization
-    $jwtToken = $request->headers->get('Authorization');
-    
-    // Vérifier si le token JWT est présent
-    if (!$jwtToken) {
-        return $this->json(['error' => 'Token non trouvé'], Response::HTTP_UNAUTHORIZED);
-    }
+        try {
 
-    // Supprimer le préfixe "Bearer " du token JWT
-    $jwtToken = str_replace('Bearer ', '', $jwtToken);
+            $currentUser = $this->getUser()->getUserIdentifier();
+            $user = $this->userRepository->findOneBy(['email' => $currentUser]);
 
-    // Vérifier si le token JWT est valide
-    try {
-        $decodedToken = $this->jwtManager->parse($jwtToken);
-    } catch (JWTException $e) {
-        return $this->json(['error' => 'Votre token n\'est pas correct'], Response::HTTP_UNAUTHORIZED);
-    }
-      // Récupérer l'utilisateur à partir du token JWT
-       $user = $this->getUser();
-        
-       
+            $fullname = $request->request->get('fullname');
+            $idLabel = $request->request->get('label');
+            $description = $request->request->has('description') ? $request->request->get('description') : null;
+            $User_idUser = $request->request->get('id');
 
-        // Récupérer les données de la requête
-    $fullname = $request->request->get('fullname');
-    $label = $request->request->get('label');
-    $description = $request->request->get('description');
-    $User_idUser = $request->request->get('id');
-
-       // Vérifier si les champs requis sont présents dans la requête
-   $requiredFields = ['fullname', 'label'];
-   foreach ($requiredFields as $field) {
-    if (!$request->request->get($field)) {
-        return $this->json(['error' => 'Une ou plusieurs données sont manquantes'], Response::HTTP_BAD_REQUEST);
-    }
-
-    // Vérifier la taille du fullname et du label
-if (strlen($fullname) > 90 || strlen($label) > 90) {
-    return $this->json(['error' => 'Une ou plusieurs données sont érronnées'], Response::HTTP_CONFLICT);
-}
-
-// Vérifier que le fullname contient uniquement des lettres et des espaces
-if (!preg_match('/^[a-zA-Z\s]+$/', $fullname)) {
-    return $this->json(['error' => 'Une ou plusieurs données sont érronnées'], Response::HTTP_CONFLICT);
-}
-
-
-
-}
-
-
-// Vérifier si l'utilisateur a au moins 16 ans
-$userBirthdate = $user->getBirth();
-if (!$userBirthdate instanceof \DateTimeInterface) {
-    return $this->json(['error' => 'La date de naissance de l\'utilisateur n\'est pas renseignée'], Response::HTTP_BAD_REQUEST);
-}
-$age = $userBirthdate->diff(new \DateTime())->y;
-if ($age < 16) {
-    return $this->json(['error' => 'L\'âge de l\'utilisateur ne permet pas (16 ans)'], Response::HTTP_NOT_ACCEPTABLE);
-}
-
-// Vérifier si l'utilisateur est déjà un artiste
-if ($user->getArtist() !== null) {
-    return $this->json(['error' => 'Un compte utilisant est déjà un compte artiste'], Response::HTTP_CONFLICT);
-}
-
-
-$existingArtistName = $this->artistRepository->findOneBy(['fullname' => $fullname]);
-if ($existingArtistName) {
-    return $this->json(['error' => 'Un compte avec ce nom d\'artiste est déjà enregistré'], Response::HTTP_CONFLICT);
-}
-
-
-        // Créer une nouvelle instance de l'artiste
-        $artist = new Artist();
-        $artist->setUserIdUser($user);
-        $artist->setFullname($fullname);
-        $artist->setLabel($label);
-        $artist->setDescription($description);
-
-        // Valider l'entité Artist
-        $errors = $validator->validate($artist);
-        if (count($errors) > 0) {
-            $errorMessages = [];
-            foreach ($errors as $error) {
-                $errorMessages[] = $error->getMessage();
+            if ($fullname === null || $idLabel === null) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "L'id du label et le fullname sont obligatoires.",
+                ], JsonResponse::HTTP_BAD_REQUEST);
             }
-            return $this->json(['error' => $errorMessages], Response::HTTP_BAD_REQUEST);
+
+            if (!preg_match('/^[0-9]+$/', $idLabel)) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le format de l'id du label est invalide.",
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            $userBirthdate = $user->getBirth();
+            $age = $userBirthdate->diff(new \DateTime())->y;
+            if ($age < 16) {
+                return $this->json(['error' => 'L\'âge de l\'utilisateur ne permet pas (16 ans)'], Response::HTTP_BAD_REQUEST);
+            }
+            if ($user->getArtist() !== null) {
+                return new JsonResponse(
+                    [
+                        'error' => "true",
+                        'message' => 'Un utilisateur ne peut gérer qu\'un seul compte artiste. Veuillez supprimer le compte existant pour en créer un nouveau.'
+                    ],
+                    Response::HTTP_FORBIDDEN
+                );
+            }
+
+            $artist = $this->artistRepository->findOneBy(['fullname' => $fullname]);
+            if ($artist) {
+                return new JsonResponse(
+                    [
+                        'error' => "true",
+                        'message' => 'Le nom d\'artiste déjà pris. Veuillez en choisir un autre.'
+                    ],
+                    Response::HTTP_CONFLICT
+                );
+            }
+
+            $label = $this->entityManager->getRepository(Label::class)->findOneBy(['idLabel' => $idLabel]);
+
+            if (!$label) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le label n'existe pas.",
+                ], JsonResponse::HTTP_NOT_FOUND);
+            }
+
+
+            $artist = new Artist();
+            
+            $artist->setUserIdUser($user);
+            $artist->setFullname($fullname);
+            $artist->setLabel($label);
+
+            
+
+            // Persister et sauvegarder l'artiste
+            $this->entityManager->persist($artist);
+            $this->entityManager->flush();
+
+            // Retourner une réponse JSON avec un message de succès
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Votre compte d\'artist a été crée avec succès. Bienvenue dans notre communauté d\'artistes!',
+                'artist_id' => $artist->getId(),
+            ], Response::HTTP_CREATED);
+        } catch (\Exception $e) {
+            return $this->json(['erreur' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
-
-        // Persister et sauvegarder l'artiste
-        $this->entityManager->persist($artist);
-        $this->entityManager->flush();
-
-        // Sérialiser l'artiste pour la réponse
-        $serializedArtist = $this->serializer->serialize($artist, 'json', [AbstractNormalizer::IGNORED_ATTRIBUTES => ['__initializer__', '__cloner__', '__isInitialized__']]);
-        
-        // Retourner une réponse JSON avec un message de succès
-        return new JsonResponse([
-
-            'error' => false,
-            'message' => 'Votre inscription a été bien prise en compte'
-        ], Response::HTTP_CREATED);
     }
 }
     

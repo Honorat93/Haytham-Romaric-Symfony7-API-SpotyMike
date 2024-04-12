@@ -158,7 +158,7 @@ class UserController extends AbstractController
             $this->entityManager->persist($user);
             $this->entityManager->flush();
 
-            $serializedUser = $this->serializer->serialize($user, 'json', ['ignored_attributes' => ['id', 'password', 'idUser', 'artist', 'salt', 'username', 'userIdentifier', 'roles', 'resetToken', 'resetTokenExpiration', 'isActive']]);
+            $serializedUser = $this->serializer->serialize($user, 'json', ['ignored_attributes' => ['id', 'password', 'idUser', 'artist', 'salt', 'username', 'userIdentifier', 'roles', 'resetToken', 'resetTokenExpired', 'resetTokenExpiration','isActive']]);
             $userArray = json_decode($serializedUser, true);
             $userArray['birth'] = $user->getBirth()->format('Y-m-d');
             $user = $this->userRepository->findOneBy(['email' => $email]);
@@ -270,7 +270,14 @@ class UserController extends AbstractController
 
             $cache->deleteItem($cacheKeyAttempts);
             $artist = $user->getArtist();
-
+            $labelName = null;
+            if ($artist) {
+                $label = $artist->getLabel();
+                if ($label) {
+                    $labelName = $label->getName();
+                }
+            }
+            
             $userArray = [
                 'firstname' => $user->getFirstName(),
                 'lastname' => $user->getLastName(),
@@ -280,11 +287,12 @@ class UserController extends AbstractController
                 'birth' => $user->getBirth()->format('d-m-Y'),
                 'createAt' => $user->getCreateAt()->format('Y-m-d\TH:i:sP'),
                 'artist' => $artist ? [
-                    'label' => $artist->getLabel(),
+                    'label' => $label->getName(),
                     'description' => $artist->getDescription(),
                     'fullname' => $artist->getFullname(),
                 ] : null,
             ];
+            
 
             $token = $jwtManager->create($user);
 
@@ -311,7 +319,7 @@ class UserController extends AbstractController
             }else{
                 return new JsonResponse([
                     'error' => true,
-                    'message' => 'Vous devez être connecté pour effectuer cette action.',
+                    'message' => 'Authentification requise. Vous devez être connecter pour effectuer cette action.',
                 ], JsonResponse::HTTP_UNAUTHORIZED);
             }
 
