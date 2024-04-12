@@ -570,7 +570,7 @@ class UserController extends AbstractController
                 return new JsonResponse([
                     'error' => true,
                     'message' => 'Le compte est déjà désactivé.',
-                ], JsonResponse::HTTP_BAD_REQUEST);
+                ], JsonResponse::HTTP_GONE);
             }
 
             $user->setIsActive(false);

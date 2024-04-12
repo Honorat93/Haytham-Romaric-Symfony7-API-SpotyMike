@@ -47,6 +47,7 @@ class Artist
     {
         $this->songs = new ArrayCollection();
         $this->albums = new ArrayCollection();
+        $this->isActive = true;
     }
 
     public function getId(): ?int
