@@ -23,6 +23,7 @@ use App\Repository\ArtistRepository;
 use App\Entity\Label;
 use app\Entity\Album;
 use app\Entity\Song;
+use Symfony\Component\Filesystem\Filesystem;
 
 
 class ArtistController extends AbstractController
@@ -32,19 +33,22 @@ class ArtistController extends AbstractController
     private $serializer;
     private $userRepository;
     private $jwtManager;
+    private $filesystem;
 
     public function __construct(
         EntityManagerInterface $entityManager,
         SerializerInterface $serializer,
         JWTTokenManagerInterface $jwtManager,
         UserRepository $userRepository,
-        ArtistRepository $artistRepository
+        ArtistRepository $artistRepository,
+        Filesystem $filesystem
     ) {
         $this->entityManager = $entityManager;
         $this->artistRepository = $artistRepository;
         $this->serializer = $serializer;
         $this->jwtManager = $jwtManager;
         $this->userRepository = $userRepository;
+        $this->filesystem = $filesystem;
     }
 
     #[Route('/artist', name: 'create_artist', methods: ['POST'])]
@@ -72,6 +76,13 @@ class ArtistController extends AbstractController
                 return new JsonResponse([
                     'error' => true,
                     'message' => "Le format de l'id du label est invalide.",
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+
+            if (!preg_match('/^[a-zA-Z\s!"#$%&\'()*+,\-\/:;<=>?@\[\\\]^_`{|}~À-ÖØ-öø-ÿ]{1,30}$/', $fullname)) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le format du nom d'artiste est invalide.",
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
 
@@ -110,9 +121,59 @@ class ArtistController extends AbstractController
                 ], JsonResponse::HTTP_NOT_FOUND);
             }
 
+            $parameter = $request->getContent();
+            parse_str($parameter, $data);
+
+            $avatarData = $data['avatar'];
+            $explodeData = explode(',', $avatarData);
+            if (count($explodeData) != 2) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => 'Le serveur ne peut pas dècoder le contenu base64 en fichier binaire.',
+                ],
+                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY
+                );
+            }
+
+            $file = base64_decode($explodeData[1]);
+            $fileSize = strlen($file);
+            $minFileSize = 1 * 1024 * 1024 / (1024 * 1024);
+            $maxFileSize = 7 * 1024 * 1024 / (1024 * 1024);
+
+            if ($fileSize < $minFileSize || $fileSize > $maxFileSize) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => 'Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb.',
+                ],
+                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY
+                );
+            }
+            
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $mimeType = $finfo->buffer($file);
+
+            if (!in_array($mimeType, ['image/jpeg', 'image/png'])) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => 'Erreur sur le format du fichier qui n\'est pas pris en compte.',
+                ],
+                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY
+                );
+            }
+
+            $artistDirectory = $this->getParameter('avatar_directory') . '/' . $fullname;
+
+            if (!$this->filesystem->exists($artistDirectory)) {
+                $this->filesystem->mkdir($artistDirectory);
+            }
+
+            $extension = $mimeType === 'image/jpeg' ? 'jpg' : 'png';
+
+            $avatarFileName = $fullname . '.' . $extension;
+            $avatarFilePath = $artistDirectory . '/' . $avatarFileName; 
+            file_put_contents($avatarFilePath, $file);
 
             $artist = new Artist();
-
             $artist->setUserIdUser($user);
             $artist->setFullname($fullname);
             $artist->setLabel($label);
@@ -120,6 +181,7 @@ class ArtistController extends AbstractController
 
             $this->entityManager->persist($artist);
             $this->entityManager->flush();
+
 
             return new JsonResponse([
                 'success' => true,
