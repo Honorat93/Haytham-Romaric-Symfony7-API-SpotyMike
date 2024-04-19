@@ -79,13 +79,13 @@ class ArtistController extends AbstractController
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
 
-            if (!preg_match('/^[a-zA-Z\s!"#$%&\'()*+,\-\/:;<=>?@\[\\\]^_`{|}~À-ÖØ-öø-ÿ]{1,30}$/', $fullname)) {
+            if (!preg_match('/^[a-zA-Z\s\W]+$/', $fullname)) {
                 return new JsonResponse([
-                    'error' => true,
-                    'message' => "Le format du nom d'artiste est invalide.",
-                ], JsonResponse::HTTP_BAD_REQUEST);
+                        'error' => true,
+                        'message' => "Le format du nom d'artiste est invalide.",
+                    ], JsonResponse::HTTP_BAD_REQUEST);
             }
-
+            
             $userBirthdate = $user->getBirth();
             $age = $userBirthdate->diff(new \DateTime())->y;
             if ($age < 16) {
@@ -127,36 +127,39 @@ class ArtistController extends AbstractController
             $avatarData = $data['avatar'];
             $explodeData = explode(',', $avatarData);
             if (count($explodeData) != 2) {
-                return new JsonResponse([
-                    'error' => true,
-                    'message' => 'Le serveur ne peut pas dècoder le contenu base64 en fichier binaire.',
-                ],
+                return new JsonResponse(
+                    [
+                        'error' => true,
+                        'message' => 'Le serveur ne peut pas dècoder le contenu base64 en fichier binaire.',
+                    ],
                     JsonResponse::HTTP_UNPROCESSABLE_ENTITY
                 );
             }
 
             $file = base64_decode($explodeData[1]);
             $fileSize = strlen($file);
-            $minFileSize = 1 * 1024 * 1024 / (1024 * 1024);
-            $maxFileSize = 7 * 1024 * 1024 / (1024 * 1024);
+            $minFileSize = 1 * 1024 * 1024;
+            $maxFileSize = 7 * 1024 * 1024;
 
             if ($fileSize < $minFileSize || $fileSize > $maxFileSize) {
-                return new JsonResponse([
-                    'error' => true,
-                    'message' => 'Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb.',
-                ],
+                return new JsonResponse(
+                    [
+                        'error' => true,
+                        'message' => 'Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb.',
+                    ],
                     JsonResponse::HTTP_UNPROCESSABLE_ENTITY
                 );
             }
-            
+
             $finfo = new \finfo(FILEINFO_MIME_TYPE);
             $mimeType = $finfo->buffer($file);
 
             if (!in_array($mimeType, ['image/jpeg', 'image/png'])) {
-                return new JsonResponse([
-                    'error' => true,
-                    'message' => 'Erreur sur le format du fichier qui n\'est pas pris en compte.',
-                ],
+                return new JsonResponse(
+                    [
+                        'error' => true,
+                        'message' => 'Erreur sur le format du fichier qui n\'est pas pris en compte.',
+                    ],
                     JsonResponse::HTTP_UNPROCESSABLE_ENTITY
                 );
             }
@@ -170,7 +173,7 @@ class ArtistController extends AbstractController
             $extension = $mimeType === 'image/jpeg' ? 'jpg' : 'png';
 
             $avatarFileName = $fullname . '.' . $extension;
-            $avatarFilePath = $artistDirectory . '/' . $avatarFileName; 
+            $avatarFilePath = $artistDirectory . '/' . $avatarFileName;
             file_put_contents($avatarFilePath, $file);
 
             $artist = new Artist();
@@ -192,6 +195,115 @@ class ArtistController extends AbstractController
             return $this->json(['erreur' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
     }
+
+    #[Route('/artist', name: 'all_artist', methods: ['GET'])]
+    public function getAllArtist(Request $request): JsonResponse
+    {
+        $currentUser = $this->getUser()->getUserIdentifier();
+        $user = $this->userRepository->findOneBy(['email' => $currentUser]);
+
+        $page = $request->query->get('currentPage', 1);
+        $limit = $request->query->get('limit', 5);
+
+        $artist = $user->getArtist();
+
+        if (!is_numeric($page) || $page < 1 && (!is_numeric($limit) || $limit === 5)) {
+            return new JsonResponse([
+                'error' => true,
+                'message' => "Le paramètre de pagination est invalide. Veuillez fournir un numéro de page valide.",
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+
+
+        $offset = ($page - 1) * $limit;
+
+        $totalArtists = $this->artistRepository->count([]);
+
+        $artists = $this->artistRepository->findBy([], null, $limit, $offset);
+
+        $artistsArray = [];
+
+        $avatarDirectory = $this->getParameter('avatar_directory');
+
+        foreach ($artists as $artist) {
+            $user = $artist->getUserIdUser();
+
+            $avatarPath = null;
+
+            $avatarFilename = $avatarDirectory . '/' . $artist->getFullname() . '/';
+            $avatarFileExtensions = ['jpg', 'jpeg', 'png'];
+
+            foreach ($avatarFileExtensions as $extension) {
+                $avatarFile = $avatarFilename . $artist->getFullname() . '.' . $extension;
+                if (file_exists($avatarFile)) {
+                    $avatarPath = $avatarFile;
+                    break;
+                }
+            }
+
+            $artistData = [
+                'firstname' => $user->getFirstname(),
+                'lastname' => $user->getLastname(),
+                'fullname' => $artist->getFullname(),
+                'avatar' => $avatarPath,
+                'sexe' => $user->getSexe(),
+                'datebirth' => $user->getBirth()->format('d-m-Y'),
+                'Artist.createdAt' => $artist->getCreateAt()->format('Y-m-d'),
+            ];
+
+            $albums = $artist->getAlbums();
+            $albumsArray = [];
+            foreach ($albums as $album) {
+                $albumData = [
+                    'id' => $album->getId(),
+                    'nom' => $album->getNom(),
+                    'categ' => $album->getCateg(),
+                    'label' => $artist->getLabel(),
+                    'cover' => $album->getCover(),
+                    'year' => $album->getYear(),
+                    'createdAt' => $album->getCreateAt()->format('Y-m-d'),
+                ];
+                $albumsArray[] = $albumData;
+            }
+
+            $songs = $artist->getSongs();
+            $songsArray = [];
+            foreach ($songs as $song) {
+                $songData = [
+                    'id' => $song->getId(),
+                    'title' => $song->getTitle(),
+                    'cover' => $song->getCover(),
+                    'createdAt' => $song->getCreateAt()->format('Y-m-d'),
+                ];
+                $songsArray[] = $songData;
+            }
+
+            $artistData['albums'] = $albumsArray;
+            $artistData['songs'] = $songsArray;
+
+            $artistsArray[] = $artistData;
+        }
+
+        if (empty($artistsArray)) {
+            return new JsonResponse([
+                'error' => true,
+                'message' => "Aucun artiste trouvé dans la page demandée.",
+            ], JsonResponse::HTTP_NOT_FOUND);
+        }
+
+        return $this->json([
+            'error' => false,
+            'artists' => $artistsArray,
+            'message' => "Informations des artistes récupérées avec succès.",
+            'pagination' => [
+                'currentPage' => $page,
+                'totalPages' => ceil($totalArtists / $limit),
+                'totalArtists' => $totalArtists,
+            ],
+        ]);
+    }
+
 
     #[Route('/artist/{fullname}', name: 'get_artist', methods: ['GET'])]
     public function getArtist(string $fullname): JsonResponse
