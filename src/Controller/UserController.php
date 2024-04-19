@@ -335,32 +335,45 @@ class UserController extends AbstractController
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
 
-            if ($tel !== null) {
+            if (isset($tel)) {
                 $phoneRegex = '/^\d{10}$/';
                 if (!preg_match($phoneRegex, $tel)) {
                     return new JsonResponse([
                         'error' => true,
                         'message' => 'Le format du numéro de téléphone est invalide.',
-                        'data' => [
-                            'tel' => $tel,
-                        ],
                     ], JsonResponse::HTTP_BAD_REQUEST);
                 }
             }
 
-            if ($firstName !== null && strlen($firstName) > 55) {
-                return new JsonResponse([
-                    'error' => true,
-                    'message' => 'Erreur de validation des données.',
-                ],
-                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY
-                );
+            if (isset($firstName)) {
+                if (strlen($firstName) < 1 || strlen($firstName) > 60) {
+                    return new JsonResponse([
+                        'error' => true,
+                        'message' => 'Les données fournies sont invalides ou icomplètes.',
+                    ],
+                        JsonResponse::HTTP_UNPROCESSABLE_ENTITY
+                    );
+                }
             }
 
-            if ($lastName !== null && strlen($lastName) > 55) {
+            if (isset($lastName)) {
+                if (strlen($lastName) < 1 || strlen($lastName) > 60) {
+                    return new JsonResponse([
+                        'error' => true,
+                        'message' => 'Les données fournies sont invalides ou icomplètes.',
+                    ],
+                        JsonResponse::HTTP_UNPROCESSABLE_ENTITY
+                    );
+                }
+            }
+            
+            $keys = array_keys($request->request->all());
+            $allowedKeys = ['firstname', 'lastname', 'tel', 'sexe'];
+            $diff = array_diff($keys, $allowedKeys);
+            if (count($diff) > 0) {
                 return new JsonResponse([
                     'error' => true,
-                    'message' => 'Erreur de validation des données.',
+                    'message' => 'Les données fournies sont invalides ou icomplètes.',
                 ],
                     JsonResponse::HTTP_UNPROCESSABLE_ENTITY
                 );

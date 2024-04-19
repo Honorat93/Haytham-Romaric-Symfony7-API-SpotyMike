@@ -17,10 +17,10 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 55)]
+    #[ORM\Column(length: 60)]
     private ?string $firstname = null;
 
-    #[ORM\Column(length: 55)]
+    #[ORM\Column(length: 60)]
     private ?string $lastname = null;
 
     #[ORM\Column(length: 80)]
