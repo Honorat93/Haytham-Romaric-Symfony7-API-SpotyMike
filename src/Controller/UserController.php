@@ -366,7 +366,7 @@ class UserController extends AbstractController
                     );
                 }
             }
-            
+
             $keys = array_keys($request->request->all());
             $allowedKeys = ['firstname', 'lastname', 'tel', 'sexe'];
             $diff = array_diff($keys, $allowedKeys);
@@ -499,7 +499,6 @@ class UserController extends AbstractController
 
             return new JsonResponse([
                 'success' => true,
-                'token' => $resetToken,
                 'message' => "Un email de réinitialisation de mot de passe a été envoyé à votre adresse email. Veuillez suivre les instructions contenues dans l'email pour réinitialiser votre mot de passe.",
             ]);
         } catch (\Exception $e) {
