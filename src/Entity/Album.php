@@ -53,7 +53,7 @@ class Album
         return $this->id;
     }
 
-    public function getIdAlbum(): ?string
+    /*public function getIdAlbum(): ?string
     {
         return $this->idAlbum;
     }
@@ -63,7 +63,7 @@ class Album
         $this->idAlbum = $idAlbum;
 
         return $this;
-    }
+    }*/
 
     public function getTitle(): ?string
     {
