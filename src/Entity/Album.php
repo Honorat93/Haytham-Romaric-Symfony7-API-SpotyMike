@@ -15,20 +15,23 @@ class Album
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 90)]
-    private ?string $idAlbum = null;
+    //#[ORM\Column(length: 90)]
+    //private ?string $idAlbum = null;
 
     #[ORM\Column(length: 90)]
-    private ?string $nom = null;
+    private ?string $title = null;
 
     #[ORM\Column(length: 20)]
-    private ?string $categ = null;
+    private ?string $categorie = null;
 
     #[ORM\Column(length: 125)]
     private ?string $cover = null;
 
     #[ORM\Column]
     private ?int $year = 2024;
+
+    #[ORM\Column]
+    private ?int $visibility = null;
 
     #[ORM\Column]
     private ?\DateTimeImmutable $createAt = null;
@@ -42,6 +45,7 @@ class Album
     public function __construct()
     {
         $this->song_idSong = new ArrayCollection();
+        $this->createAt = new \DateTimeImmutable(); 
     }
 
     public function getId(): ?int
@@ -61,26 +65,26 @@ class Album
         return $this;
     }
 
-    public function getNom(): ?string
+    public function getTitle(): ?string
     {
-        return $this->nom;
+        return $this->title;
     }
 
-    public function setNom(string $nom): static
+    public function setTitle(string $title): static
     {
-        $this->nom = $nom;
+        $this->title = $title;
 
         return $this;
     }
 
-    public function getCateg(): ?string
+    public function getCategorie(): ?string
     {
-        return $this->categ;
+        return $this->categorie;
     }
 
-    public function setCateg(string $categ): static
+    public function setCategorie(string $categorie): static
     {
-        $this->categ = $categ;
+        $this->categorie = $categorie;
 
         return $this;
     }
@@ -142,7 +146,7 @@ class Album
     public function removeSongIdSong(Song $songIdSong): static
     {
         if ($this->song_idSong->removeElement($songIdSong)) {
-            // set the owning side to null (unless already changed)
+            
             if ($songIdSong->getAlbum() === $this) {
                 $songIdSong->setAlbum(null);
             }
@@ -160,6 +164,17 @@ class Album
     {
         $this->createAt = $createAt;
 
+        return $this;
+    }
+
+    public function getVisibility(): ?int 
+    {
+        return $this->visibility;
+    }
+
+    public function setVisibility(int $visibility): static
+    {
+        $this->visibility = $visibility;
         return $this;
     }
     
