@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -55,6 +57,14 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
 
     #[ORM\Column(type: 'boolean', options: ['default' => '1'])]
     private ?bool $isActive;
+
+    #[ORM\ManyToMany(targetEntity: Artist::class, mappedBy: 'featuring')]
+    private Collection $followedArtist;
+
+    public function __construct()
+    {
+        $this->followedArtist = new ArrayCollection();
+    }
 
 
     public function getId(): ?int
@@ -251,6 +261,33 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
     public function setIsActive(bool $isActive): static
     {
         $this->isActive = $isActive;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Artist>
+     */
+    public function getFollowedArtist(): Collection
+    {
+        return $this->followedArtist;
+    }
+
+    public function addFollowedArtist(Artist $followedArtist): static
+    {
+        if (!$this->followedArtist->contains($followedArtist)) {
+            $this->followedArtist->add($followedArtist);
+            $followedArtist->addfollower($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFollowedArtist(Artist $followedArtist): static
+    {
+        if ($this->followedArtist->removeElement($followedArtist)) {
+            $followedArtist->removefollower($this);
+        }
+
         return $this;
     }
     

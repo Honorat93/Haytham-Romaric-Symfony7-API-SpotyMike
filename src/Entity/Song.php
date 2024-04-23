@@ -42,9 +42,13 @@ class Song
     #[ORM\ManyToOne(inversedBy: 'Song_idSong')]
     private ?PlaylistHasSong $playlistHasSong = null;
 
+    #[ORM\ManyToMany(targetEntity: Artist::class, mappedBy: 'featuring')]
+    private Collection $collabSong;
+
     public function __construct()
     {
         $this->Artist_idUser = new ArrayCollection();
+        $this->collabSong = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -168,6 +172,33 @@ class Song
     public function setPlaylistHasSong(?PlaylistHasSong $playlistHasSong): static
     {
         $this->playlistHasSong = $playlistHasSong;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Artist>
+     */
+    public function getCollabSong(): Collection
+    {
+        return $this->collabSong;
+    }
+
+    public function addCollabSong(Artist $collabSong): static
+    {
+        if (!$this->collabSong->contains($collabSong)) {
+            $this->collabSong->add($collabSong);
+            $collabSong->addFeaturing($this);
+        }
+
+        return $this;
+    }
+
+    public function removeCollabSong(Artist $collabSong): static
+    {
+        if ($this->collabSong->removeElement($collabSong)) {
+            $collabSong->removeFeaturing($this);
+        }
 
         return $this;
     }

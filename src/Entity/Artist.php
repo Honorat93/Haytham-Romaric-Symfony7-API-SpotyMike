@@ -43,11 +43,19 @@ class Artist
     #[ORM\Column(type: 'boolean', options: ['default' => '1'])]
     private ?bool $isActive;
 
+    #[ORM\ManyToMany(targetEntity: User::class, inversedBy: 'followedArtist')]
+    private Collection $followers;
+
+    #[ORM\ManyToMany(targetEntity: song::class, inversedBy: 'collabSong')]
+    private Collection $featuring;
+
     public function __construct()
     {
         $this->songs = new ArrayCollection();
         $this->albums = new ArrayCollection();
         $this->isActive = true;
+        $this->followers = new ArrayCollection();
+        $this->featuring = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -176,6 +184,54 @@ class Artist
     public function setIsActive(bool $isActive): static
     {
         $this->isActive = $isActive;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    public function getfollower(): Collection
+    {
+        return $this->followers;
+    }
+
+    public function addfollower(User $followers): static
+    {
+        if (!$this->followers->contains($followers)) {
+            $this->followers->add($followers);
+        }
+
+        return $this;
+    }
+
+    public function removefollower(User $followers): static
+    {
+        $this->followers->removeElement($followers);
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, song>
+     */
+    public function getFeaturing(): Collection
+    {
+        return $this->featuring;
+    }
+
+    public function addFeaturing(song $featuring): static
+    {
+        if (!$this->featuring->contains($featuring)) {
+            $this->featuring->add($featuring);
+        }
+
+        return $this;
+    }
+
+    public function removeFeaturing(song $featuring): static
+    {
+        $this->featuring->removeElement($featuring);
+
         return $this;
     }
 }

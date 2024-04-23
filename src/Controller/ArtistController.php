@@ -35,6 +35,7 @@ class ArtistController extends AbstractController
     private $jwtManager;
     private $filesystem;
 
+
     public function __construct(
         EntityManagerInterface $entityManager,
         SerializerInterface $serializer,
@@ -81,11 +82,11 @@ class ArtistController extends AbstractController
 
             if (!preg_match('/^[a-zA-Z\s\W]+$/', $fullname)) {
                 return new JsonResponse([
-                        'error' => true,
-                        'message' => "Le format du nom d'artiste est invalide.",
-                    ], JsonResponse::HTTP_BAD_REQUEST);
+                    'error' => true,
+                    'message' => "Le format du nom d'artiste est invalide.",
+                ], JsonResponse::HTTP_BAD_REQUEST);
             }
-            
+
             $userBirthdate = $user->getBirth();
             $age = $userBirthdate->diff(new \DateTime())->y;
             if ($age < 16) {
@@ -224,6 +225,8 @@ class ArtistController extends AbstractController
 
         $artistsArray = [];
 
+
+
         $avatarDirectory = $this->getParameter('avatar_directory');
 
         foreach ($artists as $artist) {
@@ -297,7 +300,7 @@ class ArtistController extends AbstractController
             'artists' => $artistsArray,
             'message' => "Informations des artistes récupérées avec succès.",
             'pagination' => [
-                'currentPage' => $page,
+                'currentPage' => intval($page),
                 'totalPages' => ceil($totalArtists / $limit),
                 'totalArtists' => $totalArtists,
             ],
@@ -306,13 +309,16 @@ class ArtistController extends AbstractController
 
 
     #[Route('/artist/{fullname}', name: 'get_artist', methods: ['GET'])]
-    public function getArtist(string $fullname): JsonResponse
+    public function getArtist(Request $request, string $fullname): JsonResponse
     {
         try {
             $currentUser = $this->getUser();
             if (!$currentUser) {
                 throw new AuthenticationException('Utilisateur non authentifié.');
             }
+
+            $fullname = $request->query->get('fullname');
+
 
             $user = $this->userRepository->findOneBy(['email' => $currentUser->getUserIdentifier()]);
 
@@ -333,14 +339,41 @@ class ArtistController extends AbstractController
             }
 
             $user = $artist->getUserIdUser();
+            $followersCount = $artist->getfollower()->count();
 
-            $artistArray = [
-                'firstname' => $user->getFirstname(),
-                'lastname' => $user->getLastname(),
-                'sexe' => $user->getSexe(),
-                'datebirth' => $user->getBirth()->format('Y-m-d'),
-                'Artist.createdAt' => $artist->getCreateAt()->format('Y-m-d'),
-            ];
+            $avatarDirectory = $this->getParameter('avatar_directory');
+            $avatarPath = null;
+            $avatarFilename = $avatarDirectory . '/' . $artist->getFullname() . '/';
+            $avatarFileExtensions = ['jpg', 'jpeg', 'png'];
+
+            foreach ($avatarFileExtensions as $extension) {
+                $avatarFile = $avatarFilename . $artist->getFullname() . '.' . $extension;
+                if (file_exists($avatarFile)) {
+                    $avatarPath = $avatarFile;
+                    break;
+                }
+            }
+
+            $featuringArray = [];
+            $songs = $artist->getSongs();
+            foreach ($songs as $song) {
+                $collabArtists = $song->getCollabSong();
+                foreach ($collabArtists as $collabArtist) {
+                    $collabSongInfo = [
+                        'id' => $song->getId(),
+                        'title' => $song->getTitle(),
+                        'cover' => $song->getCover(),
+                        'createdAt' => $song->getCreateAt()->format('Y-m-d'),
+                        'artist' => 'ee'
+                    ];
+
+                    $featuringArray[] = [
+                        'id' => $collabArtist->getId(),
+                        'fullname' => $collabArtist->getFullname(),
+                        'collabSong' => $collabSongInfo,
+                    ];
+                }
+            }
 
             $albums = $artist->getAlbums();
             $albumsArray = [];
@@ -367,8 +400,19 @@ class ArtistController extends AbstractController
                 ];
             }
 
-            $artistArray['albums'] = $albumsArray;
-            $artistArray['songs'] = $songsArray;
+            $artistArray = [
+                'firstname' => $user->getFirstname(),
+                'lastname' => $user->getLastname(),
+                'fullname' => $artist->getFullname(),
+                'avatar' => $avatarPath,
+                'follower' => $followersCount,
+                'sexe' => $user->getSexe(),
+                'datebirth' => $user->getBirth()->format('d-m-Y'),
+                'Artist.createdAt' => $artist->getCreateAt()->format('Y-m-d'),
+                'featuring' => $featuringArray,
+                'albums' => $albumsArray,
+                'songs' => $songsArray,
+            ];
 
             return $this->json([
                 'error' => false,
