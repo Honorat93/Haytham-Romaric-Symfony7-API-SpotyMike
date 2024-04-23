@@ -11,22 +11,26 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Annotation\Route;
+use App\Repository\AlbumRepository;
 
 class AlbumController extends AbstractController
 {
     private $entityManager;
     private $validator;
     private $artistRepository;
+    private $albumRepository;
 
     public function __construct(
         EntityManagerInterface $entityManager,
         ValidatorInterface $validator,
-        ArtistRepository $artistRepository
+        ArtistRepository $artistRepository,
+        AlbumRepository $albumRepository
     )
     {
         $this->entityManager = $entityManager;
         $this->validator = $validator;
         $this->artistRepository = $artistRepository;
+        $this->albumRepository = $albumRepository;
     }
 
     #[Route('/album/creation', name: 'create_album', methods: ['POST'])]
@@ -34,7 +38,7 @@ class AlbumController extends AbstractController
     {
         try {
             $currentUser = $this->getUser();
-            if (!$currentUser) {
+           if (!$currentUser) {
                 return $this->json([
                     'error' => true,
                     'message' => 'Authentification requise vous devez etre connecté pour effectuer cette action.'
@@ -92,7 +96,7 @@ class AlbumController extends AbstractController
             }
             
            
-                if (!$this->getUser()) {
+              if (!$this->getUser()) {
                   return $this->json([
               'error' => true,
               'message' => "Authentification requise. Vous devez être connecté pour effectuer cette action."
@@ -201,36 +205,139 @@ class AlbumController extends AbstractController
         } catch (\Exception $e) {
             return $this->json(['error' => true, 'message' => $e->getMessage()], JsonResponse::HTTP_BAD_REQUEST);
         }
-    }    
-}
-
-
-
-   /* #[Route('/album/{id}/detail', name: 'app_album_detail', methods: 'GET')]
-    public function detail(int $id): JsonResponse
+    }  
+    
+    #[Route('/album/get/{id}', name: 'get_album', methods: ['GET'])]
+    public function getAlbum(Request $request, int $id): JsonResponse
     {
-        $albumRepository = $this->entityManager->getRepository(Album::class);
-        $album = $albumRepository->find($id);
+        try {
 
-        if (!$album) {
-            return $this->json(['erreur' => 'l\'album n\'a pas ete trouve.'], Response::HTTP_NOT_FOUND);
+           $currentUser = $this->getUser();
+
+
+            // Vérifier si l'utilisateur est authentifié
+            if (!$currentUser) {
+                return $this->json(['error' => true, 'message' => 'Authentification requise, vous devez être connecté pour effectuer cette action'], Response::HTTP_UNAUTHORIZED);
+            }
+        
+                    // Vérifier si le token d'authentification est fourni
+                    $token = $request->headers->get('Authorization');
+                    if (!$token) {
+                        return $this->json([
+                            'error' => true,
+                            'message' => 'Authentification requise, vous devez être connecté pour effectuer cette action',
+                        ], Response::HTTP_UNAUTHORIZED);
+                    }
+            
+                    // Vérifier si le token d'authentification est valide
+                    try {
+                        $user = $this->jwtManager->decode($token);
+                    } catch (\Exception $e) {
+                        return $this->json([
+                            'error' => true,
+                            'message' => 'Authentification requise, vous devez être connecté pour effectuer cette action',
+                        ], Response::HTTP_UNAUTHORIZED);
+                    }
+
+            $album = $this->albumRepository->find($id);
+
+            if ($album === null) {
+                return $this->json([
+                    'error' => true,
+                    'message' => "L'identifiant de l'album est requis."
+                ], Response::HTTP_BAD_REQUEST);
+            }
+        
+                // Vérifier si l'album est visible ou si l'utilisateur est le propriétaire
+                if (!$album->getVisibility() && !$currentUser->isOwnerOfAlbum($album)) {
+                    return $this->json([
+                        'error' => true,
+                        'message' => 'Album non trouvé, vérifiez les informations fournies et réessayez',
+                    ], Response::HTTP_NOT_FOUND);
+                }
+        
+                // Vérifier si l'album a été supprimé et si l'utilisateur est le propriétaire
+                if ($album->isDeleted() && !$currentUser->isOwnerOfAlbum($album)) {
+                    return $this->json([
+                        'error' => true,
+                        'message' => 'Album non trouvé, vérifiez les informations fournies et réessayez',
+                    ], Response::HTTP_NOT_FOUND);
+                }
+        
+                // Récupération des détails de chaque chanson de l'album
+                $songs = [];
+                foreach ($album->getSongIdSong() as $song) {
+                    $songDetails = [
+                        'id' => $song->getId(),
+                        'title' => $song->getTitle(),
+                        'createdAt' => $song->getCreateAt(),
+                        'cover' => $song->getCover(),
+                        'featuring' => []
+                    ];
+        
+                    // Récupération des détails de chaque artiste présent sur la chanson
+                    foreach ($song->getArtistIdUser() as $artist) {
+                        $songDetails['featuring'][] = [
+                            'firstname' => $artist->getFirstName(),
+                            'lastname' => $artist->getLastName(),
+                            'fullname' => $artist->getFullName(),
+                            'avatar' => $artist->getAvatar(),
+                            'follower' => $artist->getFollower(),
+                            'cover' => $artist->getCover(),
+                            'sexe' => $artist->getSexe(),
+                            'dateBirth' => $artist->getDateBirth(),
+                            'createdAt' => $artist->getCreateAt(),
+                            'artist' => [
+                                'firstname' => $artist->getArtistUserIdUser()->getFirstName(),
+                                'lastname' => $artist->getArtistUserIdUser()->getLastName(),
+                                'fullname' => $artist->getArtistUserIdUser()->getFullName(),
+                                'avatar' => $artist->getArtistUserIdUser()->getAvatar(),
+                                'follower' => $artist->getArtistUserIdUser()->getFollower(),
+                                'cover' => $artist->getArtistUserIdUser()->getCover(),
+                                'sexe' => $artist->getArtistUserIdUser()->getSexe(),
+                                'dateBirth' => $artist->getArtistUserIdUser()->getDateBirth(),
+                                'createdAt' => $artist->getArtistUserIdUser()->getCreateAt()
+                            ]
+                        ];
+                    }
+        
+                    $songs[] = $songDetails;
+                }
+        
+                // Construction de la réponse avec les données de l'album et des chansons
+                return $this->json([
+                    'id' => $album->getId(),
+                    'title' => $album->getTitle(),
+                    'categ' => $album->getCategorie(),
+                    'cover' => $album->getCover(),
+                    'year' => $album->getYear(),
+                    // Autres données de l'album
+                    'songs' => $songs,
+                    'artist' => [
+                        'firstname' => $album->getArtistUserIdUser()->getFirstName(),
+                        'lastname' => $album->getArtistUserIdUser()->getLastName(),
+                        'fullname' => $album->getArtistUserIdUser()->getFullName(),
+                        'avatar' => $album->getArtistUserIdUser()->getAvatar(),
+                        'follower' => $album->getArtistUserIdUser()->getFollower(),
+                        'cover' => $album->getArtistUserIdUser()->getCover(),
+                        'sexe' => $album->getArtistUserIdUser()->getSexe(),
+                        'dateBirth' => $album->getArtistUserIdUser()->getDateBirth(),
+                        'createdAt' => $album->getArtistUserIdUser()->getCreateAt()
+                    ]
+                ]);
+            } catch (\Exception $e) {
+                return $this->json([
+                    'error' => 'Error: ' . $e->getMessage(),
+                ], Response::HTTP_NOT_FOUND);
+            }
         }
+    }        
 
-        return $this->json([
-            'id' => $album->getId(),
-            'idAlbum' => $album->getIdAlbum(),
-            'nom' => $album->getNom(),
-            'categ' => $album->getCateg(),
-            'cover' => $album->getCover(),
-            'year' => $album->getYear(),
-            'artist' => [
-                'id' => $album->getArtistUserIdUser()->getId(),
-                'nom' => $album->getArtistUserIdUser()->getFullname(),
-            ]
-        ]);
-    }
 
-    #[Route('/album/{id}/delete', name: 'app_album_delete', methods: 'DELETE')]
+
+
+
+   /* #[Route('/album/{id}/delete', name: 'app_album_delete', methods: 'DELETE')]
     public function delete(int $id): JsonResponse
     {
         $albumRepository = $this->entityManager->getRepository(Album::class);
@@ -275,7 +382,7 @@ class AlbumController extends AbstractController
 
         return $this->json(['album' => $album]);
     }
-}*/
+}
    /* #[Route('/album', name: 'app_album', methods :'GET')]
     public function index(): JsonResponse
     {
