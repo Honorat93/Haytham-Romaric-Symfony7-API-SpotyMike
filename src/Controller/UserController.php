@@ -49,30 +49,30 @@ class UserController extends AbstractController
     {
         try {
             //$idUser = $request->request->get('idUser');
-            $firstName = $request->request->get('firstname');
+            $firstname = $request->request->get('firstname');
             $lastName = $request->request->get('lastname');
             $email = $request->request->get('email');
             $password = $request->request->get('password');
-            $birth = $request->request->get('birth');
+            $dateBirth = $request->request->get('dateBirth');
             $tel = $request->request->has('tel') ? $request->request->get('tel') : null;
             $sexe = $request->request->has('sexe') ? $request->request->get('sexe') : null;
 
-            if ($firstName === null || $lastName === null || $email === null || $password === null || $birth === null) {
+            if ($firstname === null || $lastName === null || $email === null || $password === null || $dateBirth === null) {
                 return new JsonResponse([
                     'error' => true,
-                    'message' => 'Des champs obligatoires sont manquantes.',
+                    'message' => 'Des champs obligatoires sont manquants.',
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
 
             if ( //strlen($idUser) > 90 || 
-                strlen($firstName) > 55 || strlen($lastName) > 55 || strlen($email) > 80 || strlen($password) > 90 || (strlen($tel) > 0 && strlen($tel) > 15) || (strlen($sexe) > 0 && strlen($sexe) > 30)
+                strlen($firstname) > 55 || strlen($lastName) > 55 || strlen($email) > 80 || strlen($password) > 90 || (strlen($tel) > 0 && strlen($tel) > 15) || (strlen($sexe) > 0 && strlen($sexe) > 30)
             ) {
                 return new JsonResponse([
                     'error' => true,
                     'message' => 'Une ou plusieurs données sont éronnées (Trop longues)',
                     'data' => [
                         //'idUser' => $idUser,
-                        'firstname' => $firstName,
+                        'firstname' => $firstname,
                         'lastname' => $lastName,
                         'email' => $email,
                         'password' => $password,
@@ -98,8 +98,10 @@ class UserController extends AbstractController
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
 
-            if ($tel !== null) {
-                $phoneRegex = '/^\d{10}$/';
+            if ($tel == null) {
+                $tel = '';
+            } else {
+                $phoneRegex = '/^(?!(\d)\1{9}$)[0-9]{10}$/';
                 if (!preg_match($phoneRegex, $tel)) {
                     return new JsonResponse([
                         'error' => true,
@@ -108,23 +110,30 @@ class UserController extends AbstractController
                 }
             }
 
-            $birthRegex = '/^([0-2][0-9]|(3)[0-1])\/(0[1-9]|1[0-2])\/\d{4}$/';
-            if (!preg_match($birthRegex, $birth)) {
+            $birthRegex = '/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/';
+            if (!preg_match($birthRegex, $dateBirth)) {
                 return new JsonResponse([
                     'error' => true,
                     'message' => 'Le format de la date de naissance est invalide. Le format attendu est JJ/MM/AAAA.',
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
 
-            if ($sexe !== null && !in_array($sexe, ['0', '1'])) {
-                return new JsonResponse([
+            $dateBirth = str_replace('/', '-', $dateBirth);
+
+            if($sexe == null){
+                $sexe = 1;
+            }else{
+                if ($sexe !== null && !in_array($sexe, ['0', '1'])) {
+                    return new JsonResponse([
                         'error' => true,
                         'message' => 'La valeur du champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme.',
                     ], JsonResponse::HTTP_BAD_REQUEST);
+                }
             }
 
-            
-            $date = new \DateTime($birth);
+            $sexe = ($sexe === '1');
+
+            $date = new \DateTime($dateBirth);
             $now = new \DateTime();
             $age = $now->diff($date)->y;
             if ($age < 12) {
@@ -144,30 +153,40 @@ class UserController extends AbstractController
 
             $user = new User();
             //$user->setIdUser($idUser);
-            $user->setFirstName($firstName);
+            $user->setFirstName($firstname);
             $user->setLastName($lastName);
             $user->setEmail($email);
             $user->setPassword($this->passwordEncoder->hashPassword($user, $password));
             $user->setTel($tel);
             $user->setSexe($sexe);
-            $user->setBirth(new \DateTime($birth));
+            $user->setBirth(new \DateTime($dateBirth));
             $user->setCreateAt(new \DateTimeImmutable());
             $user->setUpdateAt(new \DateTimeImmutable());
             $user->setIsActive(true);
 
+            $sexeLabel = $sexe ? 'Homme' : 'Femme';
+
             $this->entityManager->persist($user);
             $this->entityManager->flush();
 
-            $serializedUser = $this->serializer->serialize($user, 'json', ['ignored_attributes' => ['id', 'password', 'idUser', 'artist', 'salt', 'username', 'userIdentifier', 'roles', 'resetToken', 'resetTokenExpired', 'resetTokenExpiration','isActive', 'followedArtist']]);
+            $serializedUser = $this->serializer->serialize($user, 'json', ['ignored_attributes' => ['id', 'password', 'idUser', 'artist', 'salt', 'username', 'userIdentifier', 'roles', 'resetToken', 'resetTokenExpired', 'resetTokenExpiration', 'isActive', 'followedArtist', 'birth']]);
             $userArray = json_decode($serializedUser, true);
-            $userArray['birth'] = $user->getBirth()->format('Y-m-d');
             $user = $this->userRepository->findOneBy(['email' => $email]);
 
             return $this->json([
                 'error' => false,
                 'message' => "L'utilisateur a bien été créé avec succès.",
-                'user' => $userArray,
-            ]);
+                'user' => [
+                    'firstname' => $user->getFirstName(),
+                    'lastname' => $user->getLastName(),
+                    'email' => $user->getEmail(),
+                    'tel' => $user->getTel(),
+                    'sexe' => $sexeLabel,
+                    'dateBirth' => $user->getBirth()->format('Y-m-d'),
+                    'createAt' => $user->getCreateAt()->format('Y-m-d\TH:i:sP'),
+                    'updateAt' => $user->getUpdateAt()->format('Y-m-d\TH:i:sP'),
+                ],
+            ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
             return new JsonResponse([
                 'error' => 'Error: ' . $e->getMessage(),
@@ -263,9 +282,9 @@ class UserController extends AbstractController
                 }
 
                 return new JsonResponse([
-                        'error' => true,
-                        'message' => 'Email/password incorrect',
-                    ], JsonResponse::HTTP_UNAUTHORIZED);
+                    'error' => true,
+                    'message' => 'Email/password incorrect',
+                ], JsonResponse::HTTP_UNAUTHORIZED);
             }
 
             $cache->deleteItem($cacheKeyAttempts);
@@ -277,7 +296,7 @@ class UserController extends AbstractController
                     $labelName = $label->getName();
                 }
             }
-            
+
             $userArray = [
                 'firstname' => $user->getFirstName(),
                 'lastname' => $user->getLastName(),
@@ -292,7 +311,7 @@ class UserController extends AbstractController
                     'fullname' => $artist->getFullname(),
                 ] : null,
             ];
-            
+
 
             $token = $jwtManager->create($user);
 
@@ -314,9 +333,9 @@ class UserController extends AbstractController
     {
         try {
 
-            if($currentUser = $this->getUser()->getUserIdentifier()){
+            if ($currentUser = $this->getUser()->getUserIdentifier()) {
                 $user = $this->userRepository->findOneBy(['email' => $currentUser]);
-            }else{
+            } else {
                 return new JsonResponse([
                     'error' => true,
                     'message' => 'Authentification requise. Vous devez être connecter pour effectuer cette action.',
@@ -347,10 +366,11 @@ class UserController extends AbstractController
 
             if (isset($firstName)) {
                 if (strlen($firstName) < 1 || strlen($firstName) > 60) {
-                    return new JsonResponse([
-                        'error' => true,
-                        'message' => 'Les données fournies sont invalides ou icomplètes.',
-                    ],
+                    return new JsonResponse(
+                        [
+                            'error' => true,
+                            'message' => 'Les données fournies sont invalides ou icomplètes.',
+                        ],
                         JsonResponse::HTTP_UNPROCESSABLE_ENTITY
                     );
                 }
@@ -358,10 +378,11 @@ class UserController extends AbstractController
 
             if (isset($lastName)) {
                 if (strlen($lastName) < 1 || strlen($lastName) > 60) {
-                    return new JsonResponse([
-                        'error' => true,
-                        'message' => 'Les données fournies sont invalides ou icomplètes.',
-                    ],
+                    return new JsonResponse(
+                        [
+                            'error' => true,
+                            'message' => 'Les données fournies sont invalides ou icomplètes.',
+                        ],
                         JsonResponse::HTTP_UNPROCESSABLE_ENTITY
                     );
                 }
@@ -371,15 +392,16 @@ class UserController extends AbstractController
             $allowedKeys = ['firstname', 'lastname', 'tel', 'sexe'];
             $diff = array_diff($keys, $allowedKeys);
             if (count($diff) > 0) {
-                return new JsonResponse([
-                    'error' => true,
-                    'message' => 'Les données fournies sont invalides ou icomplètes.',
-                ],
+                return new JsonResponse(
+                    [
+                        'error' => true,
+                        'message' => 'Les données fournies sont invalides ou icomplètes.',
+                    ],
                     JsonResponse::HTTP_UNPROCESSABLE_ENTITY
                 );
             }
 
-        
+
 
             $existingUser = $this->userRepository->findOneBy(['tel' => $tel]);
             if ($existingUser) {
@@ -405,7 +427,7 @@ class UserController extends AbstractController
                 $user->setSexe($sexe);
             }
 
-            $this->entityManager->persist($user);   
+            $this->entityManager->persist($user);
             $this->entityManager->flush();
 
             return $this->json([
@@ -601,7 +623,7 @@ class UserController extends AbstractController
 
 
 
-    
+
     /*#[Route('/user', name: 'delete_user', methods: ['DELETE'])]
     public function deleteUser(): JsonResponse
     {
