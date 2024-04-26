@@ -158,7 +158,7 @@ class UserController extends AbstractController
             $this->entityManager->persist($user);
             $this->entityManager->flush();
 
-            $serializedUser = $this->serializer->serialize($user, 'json', ['ignored_attributes' => ['id', 'password', 'idUser', 'artist', 'salt', 'username', 'userIdentifier', 'roles', 'resetToken', 'resetTokenExpired', 'resetTokenExpiration','isActive']]);
+            $serializedUser = $this->serializer->serialize($user, 'json', ['ignored_attributes' => ['id', 'password', 'idUser', 'artist', 'salt', 'username', 'userIdentifier', 'roles', 'resetToken', 'resetTokenExpired', 'resetTokenExpiration','isActive', 'followedArtist']]);
             $userArray = json_decode($serializedUser, true);
             $userArray['birth'] = $user->getBirth()->format('Y-m-d');
             $user = $this->userRepository->findOneBy(['email' => $email]);
