@@ -52,150 +52,231 @@ class ArtistController extends AbstractController
         $this->filesystem = $filesystem;
     }
 
-    #[Route('/artist', name: 'create_artist', methods: ['POST'])]
-    public function createArtist(Request $request): JsonResponse
+    #[Route('/artist', name: 'artist_action', methods: ['POST'])]
+    public function artistAction(Request $request): JsonResponse
     {
         try {
-
             $currentUser = $this->getUser()->getUserIdentifier();
             $user = $this->userRepository->findOneBy(['email' => $currentUser]);
+            $artist = $user->getArtist();
 
-            $fullname = $request->request->get('fullname');
-            $idLabel = $request->request->get('label');
-            $description = $request->request->has('description') ? $request->request->get('description') : null;
-            $User_idUser = $request->request->get('id');
-
-
-            if ($fullname === null || $idLabel === null) {
-                return new JsonResponse([
-                    'error' => true,
-                    'message' => "L'id du label et le fullname sont obligatoires.",
-                ], JsonResponse::HTTP_BAD_REQUEST);
-            }
-
-            if (!preg_match('/^[0-9]+$/', $idLabel)) {
-                return new JsonResponse([
-                    'error' => true,
-                    'message' => "Le format de l'id du label est invalide.",
-                ], JsonResponse::HTTP_BAD_REQUEST);
-            }
-
-            if (!preg_match('/^[a-zA-Z\s\W]+$/', $fullname)) {
-                return new JsonResponse([
-                    'error' => true,
-                    'message' => "Le format du nom d'artiste est invalide.",
-                ], JsonResponse::HTTP_BAD_REQUEST);
-            }
-
-            $userBirthdate = $user->getBirth();
-            $age = $userBirthdate->diff(new \DateTime())->y;
-            if ($age < 16) {
-                return $this->json(['error' => 'L\'âge de l\'utilisateur ne permet pas (16 ans)'], Response::HTTP_BAD_REQUEST);
-            }
-            if ($user->getArtist() !== null) {
-                return new JsonResponse(
-                    [
-                        'error' => "true",
-                        'message' => 'Un utilisateur ne peut gérer qu\'un seul compte artiste. Veuillez supprimer le compte existant pour en créer un nouveau.'
-                    ],
-                    Response::HTTP_FORBIDDEN
-                );
-            }
-
-            $artist = $this->artistRepository->findOneBy(['fullname' => $fullname]);
             if ($artist) {
-                return new JsonResponse(
-                    [
-                        'error' => "true",
-                        'message' => 'Le nom d\'artiste déjà pris. Veuillez en choisir un autre.'
-                    ],
-                    Response::HTTP_CONFLICT
-                );
-            }
+                $fullname = $request->request->get('fullname');
+                $labelId = $request->request->get('label');
+                $description = $request->request->has('description') ? $request->request->get('description') : null;
+                $avatar = $request->request->has('avatar') ? $request->request->get('avatar') : null;
 
-            $label = $this->entityManager->getRepository(Label::class)->findOneBy(['idLabel' => $idLabel]);
+                if ($labelId !== null) {
+                    $label = $this->entityManager->getRepository(Label::class)->findOneBy(['idLabel' => $labelId]);
+                    if (!$label) {
+                        return new JsonResponse([
+                            'error' => true,
+                            'message' => "Le label n'existe pas.",
+                        ], JsonResponse::HTTP_NOT_FOUND);
+                    }
+                    $artist->setLabel($label);
+                }
 
-            if (!$label) {
+                if ($avatar !== null) {
+                    $parameter = $request->getContent();
+                    parse_str($parameter, $data);
+
+                    $avatarData = $data['avatar'];
+                    $explodeData = explode(',', $avatarData);
+                    if (count($explodeData) != 2) {
+                        return new JsonResponse([
+                            'error' => true,
+                            'message' => 'Le serveur ne peut pas décoder le contenu base64 en fichier binaire.',
+                        ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                    }
+
+                    $file = base64_decode($explodeData[1]);
+                    $fileSize = strlen($file);
+                    $minFileSize = 1 * 1024 * 1024;
+                    $maxFileSize = 7 * 1024 * 1024;
+
+                    if ($fileSize < $minFileSize || $fileSize > $maxFileSize) {
+                        return new JsonResponse([
+                            'error' => true,
+                            'message' => 'Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb.',
+                        ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                    }
+
+                    $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                    $mimeType = $finfo->buffer($file);
+
+                    if (!in_array($mimeType, ['image/jpeg', 'image/png'])) {
+                        return new JsonResponse([
+                            'error' => true,
+                            'message' => 'Erreur sur le format du fichier qui n\'est pas pris en compte.',
+                        ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                    }
+
+                    $fullname = $artist->getFullname();
+
+                    $artistDirectory = $this->getParameter('avatar_directory') . '/' . $fullname;
+
+                    if (!$this->filesystem->exists($artistDirectory)) {
+                        $this->filesystem->mkdir($artistDirectory);
+                    }
+
+                    $extension = $mimeType === 'image/jpeg' ? 'jpg' : 'png';
+
+                    $avatarFileName = $fullname . '.' . $extension;
+                    $avatarFilePath = $artistDirectory . '/' . $avatarFileName;
+                    file_put_contents($avatarFilePath, $file);
+                }
+
+
+
+                if ($fullname !== null) {
+                    $oldArtistDirectory = $this->getParameter('avatar_directory') . '/' . $artist->getFullname();
+                    $newArtistDirectory = $this->getParameter('avatar_directory') . '/' . $fullname;
+
+                    if (!$this->filesystem->exists($newArtistDirectory)) {
+                        $this->filesystem->rename($oldArtistDirectory, $newArtistDirectory);
+
+                        $avatarFileExtensions = ['jpg', 'jpeg', 'png'];
+
+                        $files = scandir($newArtistDirectory);
+                        foreach ($files as $file) {
+                            if ($file !== '.' && $file !== '..') {
+                                foreach ($avatarFileExtensions as $ext) {
+                                    if (pathinfo($file, PATHINFO_EXTENSION) === $ext) {
+                                        $oldAvatarFile = $newArtistDirectory . '/' . $file;
+                                        $newAvatarFile = $newArtistDirectory . '/' . $fullname . '.' . $ext;
+                                        $this->filesystem->rename($oldAvatarFile, $newAvatarFile);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    $artist->setFullname($fullname);
+                }
+
+                if ($description !== null) {
+                    $artist->setDescription($description);
+                }
+
+                $this->entityManager->persist($artist);
+                $this->entityManager->flush();
+
                 return new JsonResponse([
-                    'error' => true,
-                    'message' => "Le label n'existe pas.",
-                ], JsonResponse::HTTP_NOT_FOUND);
-            }
+                    'success' => true,
+                    'message' => 'Le compte artiste a été mis à jour avec succès.',
+                ]);
+            } else {
+                $fullname = $request->request->get('fullname');
+                $idLabel = $request->request->get('label');
+                $description = $request->request->has('description') ? $request->request->get('description') : null;
+                $User_idUser = $request->request->get('id');
 
-            $parameter = $request->getContent();
-            parse_str($parameter, $data);
-
-            $avatarData = $data['avatar'];
-            $explodeData = explode(',', $avatarData);
-            if (count($explodeData) != 2) {
-                return new JsonResponse(
-                    [
+                if ($fullname === null || $idLabel === null) {
+                    return new JsonResponse([
                         'error' => true,
-                        'message' => 'Le serveur ne peut pas dècoder le contenu base64 en fichier binaire.',
-                    ],
-                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY
-                );
-            }
+                        'message' => "L'id du label et le fullname sont obligatoires.",
+                    ], JsonResponse::HTTP_BAD_REQUEST);
+                }
 
-            $file = base64_decode($explodeData[1]);
-            $fileSize = strlen($file);
-            $minFileSize = 1 * 1024 * 1024;
-            $maxFileSize = 7 * 1024 * 1024;
+                $userBirthdate = $user->getBirth();
+                $age = $userBirthdate->diff(new \DateTime())->y;
+                if ($age < 16) {
+                    return new JsonResponse(['error' => 'L\'âge de l\'utilisateur ne permet pas (16 ans)'], Response::HTTP_BAD_REQUEST);
+                }
 
-            if ($fileSize < $minFileSize || $fileSize > $maxFileSize) {
-                return new JsonResponse(
-                    [
+                if ($user->getArtist() !== null) {
+                    return new JsonResponse([
+                        'error' => true,
+                        'message' => 'Un utilisateur ne peut gérer qu\'un seul compte artiste. Veuillez supprimer le compte existant pour en créer un nouveau.'
+                    ], Response::HTTP_FORBIDDEN);
+                }
+
+                $artist = $this->artistRepository->findOneBy(['fullname' => $fullname]);
+                if ($artist) {
+                    return new JsonResponse([
+                        'error' => true,
+                        'message' => 'Le nom d\'artiste est déjà pris. Veuillez en choisir un autre.'
+                    ], Response::HTTP_CONFLICT);
+                }
+
+                $label = $this->entityManager->getRepository(Label::class)->findOneBy(['idLabel' => $idLabel]);
+                if (!$label) {
+                    return new JsonResponse([
+                        'error' => true,
+                        'message' => "Le label n'existe pas.",
+                    ], JsonResponse::HTTP_NOT_FOUND);
+                }
+
+            if ($request->request->has('avatar')) {
+                $parameter = $request->getContent();
+                parse_str($parameter, $data);
+
+                $avatarData = $data['avatar'];
+                $explodeData = explode(',', $avatarData);
+                if (count($explodeData) != 2) {
+                    return new JsonResponse([
+                        'error' => true,
+                        'message' => 'Le serveur ne peut pas décoder le contenu base64 en fichier binaire.',
+                    ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                }
+
+                $file = base64_decode($explodeData[1]);
+                $fileSize = strlen($file);
+                $minFileSize = 1 * 1024 * 1024;
+                $maxFileSize = 7 * 1024 * 1024;
+
+                if ($fileSize < $minFileSize || $fileSize > $maxFileSize) {
+                    return new JsonResponse([
                         'error' => true,
                         'message' => 'Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb.',
-                    ],
-                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY
-                );
-            }
+                    ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                }
 
-            $finfo = new \finfo(FILEINFO_MIME_TYPE);
-            $mimeType = $finfo->buffer($file);
+                $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                $mimeType = $finfo->buffer($file);
 
-            if (!in_array($mimeType, ['image/jpeg', 'image/png'])) {
-                return new JsonResponse(
-                    [
+                if (!in_array($mimeType, ['image/jpeg', 'image/png'])) {
+                    return new JsonResponse([
                         'error' => true,
                         'message' => 'Erreur sur le format du fichier qui n\'est pas pris en compte.',
-                    ],
-                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY
-                );
+                    ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                }
+
+                $artistDirectory = $this->getParameter('avatar_directory') . '/' . $fullname;
+
+                if (!$this->filesystem->exists($artistDirectory)) {
+                    $this->filesystem->mkdir($artistDirectory);
+                }
+
+                $extension = $mimeType === 'image/jpeg' ? 'jpg' : 'png';
+
+                $avatarFileName = $fullname . '.' . $extension;
+                $avatarFilePath = $artistDirectory . '/' . $avatarFileName;
+                file_put_contents($avatarFilePath, $file);
             }
+                $artist = new Artist();
+                $artist->setUserIdUser($user);
+                $artist->setFullname($fullname);
+                $artist->setLabel($label);
+                $artist->setCreateAt(new \DateTimeImmutable());
 
-            $artistDirectory = $this->getParameter('avatar_directory') . '/' . $fullname;
+                $this->entityManager->persist($artist);
+                $this->entityManager->flush();
 
-            if (!$this->filesystem->exists($artistDirectory)) {
-                $this->filesystem->mkdir($artistDirectory);
-            }
-
-            $extension = $mimeType === 'image/jpeg' ? 'jpg' : 'png';
-
-            $avatarFileName = $fullname . '.' . $extension;
-            $avatarFilePath = $artistDirectory . '/' . $avatarFileName;
-            file_put_contents($avatarFilePath, $file);
-
-            $artist = new Artist();
-            $artist->setUserIdUser($user);
-            $artist->setFullname($fullname);
-            $artist->setLabel($label);
-            $artist->setCreateAt(new \DateTimeImmutable());
-
-            $this->entityManager->persist($artist);
-            $this->entityManager->flush();
-
-
-            return new JsonResponse([
-                'success' => true,
-                'message' => 'Votre compte d\'artist a été crée avec succès. Bienvenue dans notre communauté d\'artistes!',
-                'artist_id' => $artist->getId(),
-            ], Response::HTTP_CREATED);
+                return new JsonResponse([
+                    'success' => true,
+                    'message' => 'Votre compte d\'artiste a été créé avec succès. Bienvenue dans notre communauté d\'artistes!',
+                    'artist_id' => $artist->getId(),
+                ], Response::HTTP_CREATED);
+            
+        }
         } catch (\Exception $e) {
-            return $this->json(['erreur' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse([
+                'error' => 'Error: ' . $e->getMessage(),
+            ], JsonResponse::HTTP_BAD_REQUEST);
         }
     }
+
 
     #[Route('/artist', name: 'all_artist', methods: ['GET'])]
     public function getAllArtist(Request $request): JsonResponse
@@ -425,71 +506,6 @@ class ArtistController extends AbstractController
         }
     }
 
-    #[Route('/artist', name: 'update_artist', methods: ['POST'])]
-    public function updateArtist(Request $request): JsonResponse
-    {
-        try {
-            $currentUser = $this->getUser()->getUserIdentifier();
-            $user = $this->userRepository->findOneBy(['email' => $currentUser]);
-
-            $artist = $user->getArtist();
-
-
-
-            if (!$artist) {
-                return new JsonResponse([
-                    'error' => true,
-                    'message' => "Artiste non trouvé. Veuillez vérifier les informations fournies.",
-                ], JsonResponse::HTTP_NOT_FOUND);
-            }
-
-            if ($user->getArtist() === null) {
-                return new JsonResponse([
-                    'error' => true,
-                    'message' => "Mise à jour non autorisée. Vous n'avez pas les droits requis pour modifier les informations de cet artiste.",
-                ], JsonResponse::HTTP_FORBIDDEN);
-            }
-
-            if ($artist->getUserIdUser() !== $user) {
-                return new JsonResponse([
-                    'error' => true,
-                    'message' => "Vous nêtes pas autorisé à accéder aux informations de cet artiste.",
-                ], JsonResponse::HTTP_FORBIDDEN);
-            }
-
-            //fullname deja existant
-            $fullname = $request->request->get('fullname');
-            $artistExist = $this->artistRepository->findOneBy(['fullname' => $fullname]);
-            if ($artistExist) {
-                return new JsonResponse([
-                    'error' => true,
-                    'message' => "Le nom d'artiste est déjà utilisé. Veuillez choisir un autre nom.",
-                ], JsonResponse::HTTP_CONFLICT);
-            }
-
-
-            $fullname = $request->request->has('fullname') ? $request->request->get('fullname') : null;
-            $description = $request->request->has('description') ? $request->request->get('description') : null;
-            $label = $request->request->has('label') ? $request->request->get('label') : null;
-
-            $artist->setFullname($fullname);
-            $artist->setDescription($description);
-            $artist->setLabel($label);
-
-            $this->entityManager->persist($artist);
-            $this->entityManager->flush();
-
-            return new JsonResponse([
-                'success' => true,
-                'message' => 'Le compte artiste a été mis à jour avec succès.',
-            ]);
-        } catch (\Exception $e) {
-            return new JsonResponse([
-                'error' => 'Error: ' . $e->getMessage(),
-            ], JsonResponse::HTTP_NOT_FOUND);
-        }
-    }
-
 
     #[Route('/artist', name: 'desactivate_artist', methods: 'DELETE')]
     public function desactivateArtist(): JsonResponse
@@ -529,79 +545,4 @@ class ArtistController extends AbstractController
             ], JsonResponse::HTTP_NOT_FOUND);
         }
     }
-
-    /*  #[Route('/artist', name: 'app_artist_index', methods: ['GET'])]
-    public function index(): JsonResponse
-    {
-        $artists = $this->artistRepository->findAll();
-
-        return $this->json(['artists' => $artists]);
-    } 
-    
-    
-    #[Route('/artist/{id}/detail', name: 'app_artist_detail', methods: ['GET'])]
-    public function detail(int $id): JsonResponse
-    {
-        $artist = $this->artistRepository->find($id);
-
-        if (!$artist) {
-            return $this->json(['erreur' => 'On ne trouve pas artiste'], Response::HTTP_NOT_FOUND);
-        }
-
-        return $this->json([
-            'artist' => [
-                'id' => $artist->getId(),
-                'fullname' => $artist->getFullname(),
-                'label' => $artist->getLabel(),
-                'description' => $artist->getDescription(),
-            ]
-        ]);
-    }
-
-    #[Route('/artist/{id}/update', name: 'app_artist_update', methods: ['PUT'])]
-    public function update(Request $request, int $id): JsonResponse
-    {
-        $artist = $this->artistRepository->find($id);
-
-        if (!$artist) {
-            return $this->json(['erreur' => 'On ne trouve pas artiste'], Response::HTTP_NOT_FOUND);
-        }
-
-        $data = json_decode($request->getContent(), true);
-
-        if (isset($data['fullname'])) {
-            $fullname = $data['fullname'];
-            if (!preg_match('/^[a-zA-Z\s]+$/', $fullname)) {
-                return $this->json(['erreur' => 'Le format du nom est invalide'], Response::HTTP_BAD_REQUEST);
-            }
-            $artist->setFullname($fullname);
-        }
-
-        if (isset($data['label'])) {
-            $artist->setLabel($data['label']);
-        }
-
-        if (isset($data['description'])) {
-            $artist->setDescription($data['description']);
-        }
-
-        $this->entityManager->flush();
-
-        return $this->json(['artist' => $artist]);
-    }
-
-    #[Route('/artist/{id}/delete', name: 'app_artist_delete', methods: ['DELETE'])]
-    public function delete(int $id): JsonResponse
-    {
-        $artist = $this->artistRepository->find($id);
-
-        if (!$artist) {
-            return $this->json(['erreur' => 'On ne trouve pas artiste'], Response::HTTP_NOT_FOUND);
-        }
-
-        $this->entityManager->remove($artist);
-        $this->entityManager->flush();
-
-        return $this->json(['message' => 'Artiste supprimé']);
-    }*/
 }
