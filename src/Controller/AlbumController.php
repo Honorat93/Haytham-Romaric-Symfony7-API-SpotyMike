@@ -207,7 +207,7 @@ class AlbumController extends AbstractController
         }
     }  
     
-    #[Route('/album/get/{id}', name: 'get_album', methods: ['GET'])]
+    #[Route('/album/{id}', name: 'get_album', methods: ['GET'])]
     public function getAlbum(Request $request, int $id): JsonResponse
     {
         try {
