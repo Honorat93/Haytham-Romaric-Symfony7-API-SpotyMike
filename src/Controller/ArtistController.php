@@ -445,7 +445,7 @@ class ArtistController extends AbstractController
                         'title' => $song->getTitle(),
                         'cover' => $song->getCover(),
                         'createdAt' => $song->getCreateAt()->format('Y-m-d'),
-                        'artist' => 'ee'
+                        'artist' => $artist->getFullname(),
                     ];
 
                     $featuringArray[] = [
