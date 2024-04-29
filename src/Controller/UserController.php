@@ -30,6 +30,7 @@ class UserController extends AbstractController
     private $entityManager;
     private $serializer;
     private $jwtManager;
+    private $tokenVerifier;
 
     public function __construct(
         UserRepository $userRepository,
@@ -37,12 +38,14 @@ class UserController extends AbstractController
         SerializerInterface $serializer,
         UserPasswordHasherInterface $passwordEncoder,
         JWTTokenManagerInterface $jwtManager,
+        TokenManagementController $tokenVerifier,
     ) {
         $this->userRepository = $userRepository;
         $this->entityManager = $entityManager;
         $this->serializer = $serializer;
         $this->passwordEncoder = $passwordEncoder;
         $this->jwtManager = $jwtManager;
+        $this->tokenVerifier = $tokenVerifier;
     }
 
     #[Route('/register', name: 'create_user', methods: 'POST')]
@@ -393,14 +396,11 @@ class UserController extends AbstractController
     {
         try {
 
-            if ($currentUser = $this->getUser()->getUserIdentifier()) {
-                $user = $this->userRepository->findOneBy(['email' => $currentUser]);
-            } else {
-                return new JsonResponse([
-                    'error' => true,
-                    'message' => 'Authentification requise. Vous devez être connecter pour effectuer cette action.',
-                ], JsonResponse::HTTP_UNAUTHORIZED);
+            $dataMiddellware = $this->tokenVerifier->checkToken($request);
+            if (gettype($dataMiddellware) == 'boolean') {
+                return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware), JsonResponse::HTTP_UNAUTHORIZED);
             }
+            $user = $dataMiddellware;
 
             $firstName = $request->request->get('firstname');
             $lastName = $request->request->get('lastname');
@@ -635,7 +635,7 @@ class UserController extends AbstractController
             }
 
 
-            
+
 
             if ($user->isResetTokenExpired()) {
                 $expirationTime = $user->getResetTokenExpiration();
@@ -643,9 +643,9 @@ class UserController extends AbstractController
 
                 if ($currentTime >= $expirationTime) {
                     return new JsonResponse([
-                            'error' => true,
-                            'message' => "Votre token de réinitialisation de mot de passe a expiré. Veuillez refaire une demande de réinitialisation de mot de passe.",
-                        ], JsonResponse::HTTP_GONE);
+                        'error' => true,
+                        'message' => "Votre token de réinitialisation de mot de passe a expiré. Veuillez refaire une demande de réinitialisation de mot de passe.",
+                    ], JsonResponse::HTTP_GONE);
                 }
             }
 
@@ -667,11 +667,14 @@ class UserController extends AbstractController
     }
 
     #[Route('/account-deactivation', name: 'desactivate_user', methods: 'DELETE')]
-    public function desactivateUser(): JsonResponse
+    public function desactivateUser(Request $request): JsonResponse
     {
         try {
-            $currentUser = $this->getUser()->getUserIdentifier();
-            $user = $this->userRepository->findOneBy(['email' => $currentUser]);
+            $dataMiddellware = $this->tokenVerifier->checkToken($request);
+            if (gettype($dataMiddellware) == 'boolean') {
+                return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware), JsonResponse::HTTP_UNAUTHORIZED);
+            }
+            $user = $dataMiddellware;
 
             if (!$user) {
                 return new JsonResponse([

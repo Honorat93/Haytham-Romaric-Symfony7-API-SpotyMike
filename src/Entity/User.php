@@ -96,6 +96,8 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
         return $this;
     }
 
+
+
     public function getEmail(): ?string
     {
         return $this->email;
@@ -184,6 +186,8 @@ class User implements PasswordAuthenticatedUserInterface, UserInterface
     {
         return $this->artist;
     }
+
+    
 
     public function setArtist(Artist $artist): static
     {
