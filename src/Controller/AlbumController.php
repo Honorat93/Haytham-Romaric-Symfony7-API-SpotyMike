@@ -39,6 +39,7 @@ class AlbumController extends AbstractController
         $this->albumRepository = $albumRepository;
         $this->userRepository = $userRepository;
     }
+    
 
     #[Route('/album/creation', name: 'create_album', methods: ['POST'])]
     public function createAlbum(Request $request): JsonResponse
@@ -187,8 +188,159 @@ class AlbumController extends AbstractController
         }
     }
 
+
+
+    #[Route('/albums/search', name: 'search_albums', methods: ['GET'])]
+    public function searchAlbums(Request $request, AlbumRepository $albumRepository, EntityManagerInterface $entityManager): JsonResponse
+    {
+        try {
+
+                    // Récupérer l'utilisateur actuel
+        $currentUser = $this->getUser();
+        
+        // Vérifier si un utilisateur est authentifié
+        if ($currentUser !== null) {
+            $currentUserIdentifier = $currentUser->getUserIdentifier();
+            $user = $this->userRepository->findOneBy(['email' => $currentUserIdentifier]);
+            
+            // Votre logique pour l'utilisateur authentifié ...
+        } else {
+            // Si aucun utilisateur n'est authentifié
+            return $this->json(['error' => true, 'message' => 'Authentification requise, vous devez être connecté pour effectuer cette action'], Response::HTTP_UNAUTHORIZED);
+        }
+              
+        // Récupérer les critères de recherche depuis la requête
+        $criteria = [
+            'limit' => $request->query->getInt('limit', 5),
+            'categ' => $request->query->get('categ'),
+            'featuring' => $request->query->get('featuring'),
+            'year' => $request->query->get('year'),
+            'label' => $request->query->get('label'),
+            'fullname' => $request->query->get('fullname'),
+            'nom' => $request->query->get('nom'),
+            'currentPage' => $request->query->getInt('currentPage', 1)
+        ];
+
+        dump($criteria);
+
+                    // Gérer les valeurs par défaut pour la pagination
+                    $limit = $request->query->getInt('limit', 5);
+                    $currentPage = $request->query->getInt('currentPage', 1);
+
+            $additionalParams = array_diff(array_keys($request->query->all()), ['nom', 'categ', 'cover', 'visibility']);
+            if (!empty($additionalParams)) {
+                return $this->json([
+                    'error' => true,
+                    'message' => 'Les paramètres fournis sont invalides. Veuillez vérifier les données soumises.'
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+            
+
+            if (isset($criteria['categ'])) {
+                $validCategories = ['rock', 'pop', 'jazz', 'blues'];
+                if (!in_array($criteria['categ'], $validCategories)) {
+                    return $this->json([
+                        'error' => true,
+                        'message' => "Les catégories ciblées sont invalides"
+                    ], JsonResponse::HTTP_BAD_REQUEST);
+                }
+            }
+            
+
     
-    #[Route('/album/{id}', name: 'get_album', methods: ['GET'])]
+            if (isset($criteria['year']) && !is_numeric($criteria['year'])) {
+                return $this->json([
+                    'error' => true,
+                    'message' => "L'année n'est pas valide."
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+            
+            if (!is_numeric($currentPage) || $currentPage < 1 || !is_numeric($limit) || $limit < 1) {
+                return $this->json([
+                    'error' => true,
+                    'message' => "Les paramètres de pagination sont invalides. Veuillez fournir des valeurs numériques valides."
+                ], JsonResponse::HTTP_BAD_REQUEST);
+            }
+    
+$albums = $this->albumRepository->searchByCriteria(
+    $limit,
+    $criteria['categ'],
+    $criteria['featuring'],
+    $criteria['year'],
+    $criteria['label'],
+    $criteria['fullname'],
+    $criteria['nom'],
+    $currentPage
+);
+
+        // Construire les données des albums de manière similaire au code existant
+        $albumsData = [];
+        foreach ($albums as $album) {
+            $songsData = [];
+            foreach ($album->getSongIdSong() as $song) {
+                $artistsData = [];
+                foreach ($song->getArtists() as $artist) {
+                    $artistsData[] = [
+                        'firstname' => $artist->getUser()->getFirstName(),
+                        'lastname' => $artist->getUser()->getLastName(),
+                        'fullname' => $artist->getUser()->getFullName(),
+                        'avatar' => $artist->getUser()->getAvatar(),
+                        'follower' => $artist->getUser()->getFollower(),
+                        'cover' => $artist->getUser()->getCover(),
+                        'sexe' => $artist->getUser()->getSexe(),
+                        'dateBirth' => $artist->getUser()->getDateBirth(),
+                        'createdAt' => $artist->getUser()->getCreateAt()->format('Y-m-d'),
+                    ];
+                }
+
+                $songsData[] = [
+                    'id' => $song->getId(),
+                    'title' => $song->getTitle(),
+                    'cover' => $song->getCover(),
+                    'createdAt' => $song->getCreatedAt()->format('Y-m-d'),
+                    'artists' => $artistsData,
+                ];
+            }
+
+            $albumsData[] = [
+                'id' => $album->getId(),
+                'nom' => $album->getNom(),
+                'categ' => $album->getCateg(),
+                'cover' => $album->getCover(),
+                'year' => $album->getYear(),
+                'songs' => $songsData,
+                'artist' => [
+                    'firstname' => $album->getArtistUserIdUser()->getUserIdUser()->getFirstName(),
+                    'lastname' => $album->getArtistUserIdUser()->getUserIdUser()->getLastName(),
+                    'fullname' => $album->getArtistUserIdUser()->getFullName(),
+                    'follower' => $album->getArtistUserIdUser()->getFollower(),
+                    'cover' => $album->getCover(),
+                    'sexe' => $album->getArtistUserIdUser()->getUserIdUser()->getSexe(),
+                    'dateBirth' => $album->getArtistUserIdUser()->getUserIdUser()->getBirth(),
+                    'createdAt' => $album->getArtistUserIdUser()->getCreateAt()->format('Y-m-d'),
+                ],
+            ];
+        }
+
+        // Construction de la réponse avec les données des albums et les informations de pagination
+        return $this->json([
+            'error' => false,
+            'albums' => $albumsData,
+            'pagination' => [
+                'currentPage' => $currentPage,
+                'totalPages' => ceil(count($albums) / $limit),
+                'totalAlbums' => count($albums),
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return $this->json([
+            'success' => false,
+            'error' => 'Error: ' . $e->getMessage(),
+        ], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
+    }
+}
+    
+  /*  #[Route('/album/{id}', name: 'get_album', methods: ['GET'])]
     public function getAlbum(Request $request, int $id): JsonResponse
     {
         try {
@@ -327,7 +479,8 @@ class AlbumController extends AbstractController
                 'error' => 'Error: ' . $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-    }
+    }*/
+    
 
 
     #[Route('/album/{id}', name: 'app_album_update', methods: 'PUT')]
@@ -520,9 +673,6 @@ if (isset($visibility) && $visibility !== $album->getVisibility()) {
             // Récupérer les albums pour la page donnée
             $albums = $this->albumRepository->findBy([], null, $limit, $offset);
     
-            // Initialiser un tableau pour stocker les données des albums
-            $albumsData = [];
-    
             // Itérer sur chaque album récupéré
             foreach ($albums as $album) {
                 // Récupérer les détails de chaque chanson de l'album
@@ -592,8 +742,10 @@ if (isset($visibility) && $visibility !== $album->getVisibility()) {
             ], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
-    
-}
+
+
+
+}    
    /* #[Route('/album/{id}/delete', name: 'app_album_delete', methods: 'DELETE')]
     public function delete(int $id): JsonResponse
     {
