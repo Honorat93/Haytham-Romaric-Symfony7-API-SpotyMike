@@ -35,6 +35,7 @@ class ArtistController extends AbstractController
     private $jwtManager;
     private $filesystem;
 
+    private $tokenVerifier;
 
     public function __construct(
         EntityManagerInterface $entityManager,
@@ -42,7 +43,8 @@ class ArtistController extends AbstractController
         JWTTokenManagerInterface $jwtManager,
         UserRepository $userRepository,
         ArtistRepository $artistRepository,
-        Filesystem $filesystem
+        Filesystem $filesystem,
+        TokenManagementController $tokenVerifier,
     ) {
         $this->entityManager = $entityManager;
         $this->artistRepository = $artistRepository;
@@ -50,14 +52,18 @@ class ArtistController extends AbstractController
         $this->jwtManager = $jwtManager;
         $this->userRepository = $userRepository;
         $this->filesystem = $filesystem;
+        $this->tokenVerifier = $tokenVerifier;
     }
 
     #[Route('/artist', name: 'artist_action', methods: ['POST'])]
     public function artistAction(Request $request): JsonResponse
     {
         try {
-            $currentUser = $this->getUser()->getUserIdentifier();
-            $user = $this->userRepository->findOneBy(['email' => $currentUser]);
+            $dataMiddellware = $this->tokenVerifier->checkToken($request);
+            if (gettype($dataMiddellware) == 'boolean') {
+                return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware), JsonResponse::HTTP_UNAUTHORIZED);
+            }
+            $user = $dataMiddellware;
             $artist = $user->getArtist();
 
             if ($artist) {
@@ -281,8 +287,11 @@ class ArtistController extends AbstractController
     #[Route('/artist', name: 'all_artist', methods: ['GET'])]
     public function getAllArtist(Request $request): JsonResponse
     {
-        $currentUser = $this->getUser()->getUserIdentifier();
-        $user = $this->userRepository->findOneBy(['email' => $currentUser]);
+        $dataMiddellware = $this->tokenVerifier->checkToken($request);
+        if (gettype($dataMiddellware) == 'boolean') {
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware), JsonResponse::HTTP_UNAUTHORIZED);
+        }
+        $user = $dataMiddellware;
 
         $page = $request->query->get('currentPage', 1);
         $limit = $request->query->get('limit', 5);
@@ -393,15 +402,14 @@ class ArtistController extends AbstractController
     public function getArtist(Request $request, string $fullname): JsonResponse
     {
         try {
-            $currentUser = $this->getUser();
-            if (!$currentUser) {
-                throw new AuthenticationException('Utilisateur non authentifié.');
+            $dataMiddellware = $this->tokenVerifier->checkToken($request);
+            if (gettype($dataMiddellware) == 'boolean') {
+                return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware), JsonResponse::HTTP_UNAUTHORIZED);
             }
+            $user = $dataMiddellware;
 
             $fullname = $request->query->get('fullname');
 
-
-            $user = $this->userRepository->findOneBy(['email' => $currentUser->getUserIdentifier()]);
 
             $artist = $this->artistRepository->findOneBy(['fullname' => $fullname]);
 
@@ -445,7 +453,7 @@ class ArtistController extends AbstractController
                         'title' => $song->getTitle(),
                         'cover' => $song->getCover(),
                         'createdAt' => $song->getCreateAt()->format('Y-m-d'),
-                        'artist' => 'ee'
+                        'artist' => $artist->getFullname(),
                     ];
 
                     $featuringArray[] = [
@@ -508,12 +516,14 @@ class ArtistController extends AbstractController
 
 
     #[Route('/artist', name: 'desactivate_artist', methods: 'DELETE')]
-    public function desactivateArtist(): JsonResponse
+    public function desactivateArtist(Request $request): JsonResponse
     {
         try {
-            $currentUser = $this->getUser()->getUserIdentifier();
-            $user = $this->userRepository->findOneBy(['email' => $currentUser]);
-
+            $dataMiddellware = $this->tokenVerifier->checkToken($request);
+            if (gettype($dataMiddellware) == 'boolean') {
+                return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware), JsonResponse::HTTP_UNAUTHORIZED);
+            }
+            $user = $dataMiddellware;
             $artist = $user->getArtist();
 
             if (!$artist) {
