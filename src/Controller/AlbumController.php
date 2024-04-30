@@ -3,18 +3,27 @@
 namespace App\Controller;
 
 use App\Entity\User;
-use App\Entity\Album;
+use App\Entity\Artist;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Symfony\Component\Security\Http\Authentication\AuthenticationFailureHandlerInterface;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use App\Repository\UserRepository;
 use App\Repository\ArtistRepository;
-use App\Entity\Artist;
+use App\Entity\Label;
+use App\Entity\Album;
+use App\Entity\Song;
+use Symfony\Component\Filesystem\Filesystem;
 
 class AlbumController extends AbstractController
 {
@@ -23,6 +32,7 @@ class AlbumController extends AbstractController
     private $serializer;
     private $artistRepository;
     private $jwtManager;
+    private $tokenVerifier;
     private $filesystem;
 
     public function __construct(
@@ -31,17 +41,20 @@ class AlbumController extends AbstractController
         SerializerInterface $serializer,
         ArtistRepository $artistRepository,
         JWTTokenManagerInterface $jwtManager,
-        Filesystem $filesystem
-    ) {
+        TokenManagementController $tokenVerifier,
+        Filesystem $filesystem,
+    )
+    {
         $this->entityManager = $entityManager;
         $this->validator = $validator;
         $this->artistRepository = $artistRepository;
+        $this->tokenVerifier = $tokenVerifier; 
         $this->serializer = $serializer;
         $this->jwtManager = $jwtManager;
         $this->filesystem = $filesystem;
     }
 
-    #[Route('/album/{id}', name: 'update_album', methods: ['POST'])]
+    #[Route('/album/{id}', name: 'update_album', methods: ['PUT'])]
     public function updateAlbum(Request $request, int $id): JsonResponse
     {
         try {
