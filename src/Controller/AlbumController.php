@@ -3,27 +3,18 @@
 namespace App\Controller;
 
 use App\Entity\User;
-use App\Entity\Artist;
+use App\Entity\Album;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
-use Symfony\Component\HttpKernel\Exception\HttpException;
-use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
-use Symfony\Component\Security\Http\Authentication\AuthenticationFailureHandlerInterface;
-use Symfony\Component\Security\Core\Exception\AuthenticationException;
-use App\Repository\UserRepository;
 use App\Repository\ArtistRepository;
-use App\Entity\Label;
-use App\Entity\Album;
-use App\Entity\Song;
-use Symfony\Component\Filesystem\Filesystem;
+use App\Entity\Artist;
 
 class AlbumController extends AbstractController
 {
@@ -32,7 +23,6 @@ class AlbumController extends AbstractController
     private $serializer;
     private $artistRepository;
     private $jwtManager;
-    private $tokenVerifier;
     private $filesystem;
 
     public function __construct(
@@ -41,47 +31,57 @@ class AlbumController extends AbstractController
         SerializerInterface $serializer,
         ArtistRepository $artistRepository,
         JWTTokenManagerInterface $jwtManager,
-        TokenManagementController $tokenVerifier,
-        Filesystem $filesystem,
-    )
-    {
+        Filesystem $filesystem
+    ) {
         $this->entityManager = $entityManager;
         $this->validator = $validator;
         $this->artistRepository = $artistRepository;
-        $this->tokenVerifier = $tokenVerifier; 
         $this->serializer = $serializer;
         $this->jwtManager = $jwtManager;
         $this->filesystem = $filesystem;
     }
 
-    #[Route('/album', name: 'create_album', methods: ['POST'])]
-    public function createAlbum(Request $request): JsonResponse
+    #[Route('/album/{id}', name: 'update_album', methods: ['POST'])]
+    public function updateAlbum(Request $request, int $id): JsonResponse
     {
         try {
-            
             $dataMiddleware = $this->tokenVerifier->checkToken($request);
             if (gettype($dataMiddleware) === 'boolean') {
-                return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddleware), JsonResponse::HTTP_UNAUTHORIZED);
+                return $this->json(
+                    $this->tokenVerifier->sendJsonErrorToken($dataMiddleware),
+                    JsonResponse::HTTP_UNAUTHORIZED
+                );
             }
             $user = $dataMiddleware;
 
-            
             if (!$user) {
                 return $this->json([
                     'error' => true,
                     'message' => 'Authentification requise. Vous devez être connecté pour effectuer cette action.'
                 ], JsonResponse::HTTP_UNAUTHORIZED);
             }
-            
-            
+
+            $album = $this->entityManager->getRepository(Album::class)->find($id);
+            if (!$album) {
+                return $this->json([
+                    'error' => true,
+                    'message' => 'Aucun album trouvé correspondant au nom fourni.'
+                ], JsonResponse::HTTP_NOT_FOUND);
+            }
+
+            if ($album->getArtistUserIdUser() !== $user->getArtist()) {
+                return $this->json([
+                    'error' => true,
+                    'message' => 'Vous n\'avez pas l\'autorisation pour accéder à cet album.'
+                ], JsonResponse::HTTP_FORBIDDEN);
+            }
+
             $title = $request->request->get('title');
             $categorie = $request->request->get('categorie');
             $cover = $request->request->get('cover');
             $year = $request->request->get('year');
             $visibility = $request->request->get('visibility');
-            
 
-            
             $additionalParams = array_diff(array_keys($request->request->all()), ['title', 'categorie', 'cover', 'visibility']);
             if (!empty($additionalParams)) {
                 return $this->json([
@@ -89,144 +89,117 @@ class AlbumController extends AbstractController
                     'message' => 'Les paramètres fournis sont invalides. Veuillez vérifier les données soumises.'
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
-            
-           
+
             if ($year === null) {
-                $year = 2024; 
+                $year = 2024;
             }
 
-            
-            $requiredFields = ['categorie', 'title', 'cover', 'visibility'];
-            foreach ($requiredFields as $field) {
-                if (empty($$field)) {
-                    throw new \Exception("Le champ $field est obligatoire.");
+            if ($title !== null) {
+                if (strlen($title) < 1 || strlen($title) > 90) {
+                    return $this->json([
+                        'error' => true,
+                        'message' => 'Erreur de validation des données.'
+                    ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
                 }
-            }
-           
-            
-            if (!$user->getArtist()) {
-                return $this->json([
-                    'error' => true,
-                    'message' => 'Accès refusé. Vous n\'avez pas l\'autorisation pour créer un album.'
-                ], JsonResponse::HTTP_FORBIDDEN);
-            }
-                                           
-            
-            if (empty($title) || strlen($title) < 1 || strlen($title) > 90) {
-                return $this->json(['error' => true, 'message' => "Erreur de validation des données"], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
-            }
-            if (!preg_match('/^[a-zA-Z0-9\s\'"!@#$%^&*()_+=\-,.?;:]+$/u', $title)) {
-                return $this->json(['error' => true, 'message' => "Erreur de validation des données"], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                if (!preg_match('/^[a-zA-Z0-9\s\'"!@#$%^&*()_+=\-,.?;:]+$/u', $title)) {
+                    return $this->json([
+                        'error' => true,
+                        'message' => 'Erreur de validation des données.'
+                    ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                }
+                $album->setTitle($title);
             }
 
-            
-            if (!empty($categorie)) {
+            if ($categorie !== null) {
                 $categorieArray = json_decode($categorie, true);
-            
                 if (!is_array($categorieArray) || empty($categorieArray)) {
-                    return $this->json(['error' => true, 'message' => "Erreur de validation des données."], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                    return $this->json([
+                        'error' => true,
+                        'message' => 'Erreur de validation des données.'
+                    ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
                 }
-
-                
                 $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'Mike'];
                 foreach ($categorieArray as $cat) {
                     if (in_array($cat, $invalidCategories)) {
-                        return $this->json(['error' => true, 'message' => "Les catégories ciblées sont invalides"], JsonResponse::HTTP_BAD_REQUEST);
+                        return $this->json([
+                            'error' => true,
+                            'message' => 'Les catégories ciblées sont invalides.'
+                        ], JsonResponse::HTTP_BAD_REQUEST);
                     }
                 }
+                $album->setCategorie($categorie);
             }
 
             if ($cover !== null) {
-                $parameter = $request->getContent();
-                parse_str($parameter, $data);
-            
-                $coverData = $data['cover'];
-                $explodeData = explode(',', $coverData);
+                $explodeData = explode(',', $cover);
                 if (count($explodeData) != 2) {
                     return new JsonResponse([
                         'error' => true,
-                        'message' => 'Le serveur ne peut pas décoder le contenu base64 en fichier binaire.',
+                        'message' => 'Le serveur ne peut pas décoder le contenu base64 en fichier binaire.'
                     ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
                 }
-            
+
                 $file = base64_decode($explodeData[1]);
                 $fileSize = strlen($file);
                 $minFileSize = 1 * 1024 * 1024;
                 $maxFileSize = 7 * 1024 * 1024;
-            
-              if ($fileSize < $minFileSize || $fileSize > $maxFileSize) {
+
+                if ($fileSize < $minFileSize || $fileSize > $maxFileSize) {
                     return new JsonResponse([
                         'error' => true,
-                        'message' => 'Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb.',
+                        'message' => 'Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb.'
                     ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
                 }
-            
-                
+
                 $finfo = new \finfo(FILEINFO_MIME_TYPE);
                 $mimeType = $finfo->buffer($file);
-            
+
                 if (!in_array($mimeType, ['image/jpeg', 'image/png'])) {
                     return new JsonResponse([
                         'error' => true,
-                        'message' => 'Erreur sur le format du fichier qui n\'est pas pris en compte.',
+                        'message' => 'Erreur sur le format du fichier qui n\'est pas pris en compte.'
                     ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
                 }
+
+                $coverFileName = uniqid('album_cover_') . '.' . pathinfo($explodeData[0], PATHINFO_EXTENSION);
+                $coverDirectory = $this->getParameter('cover_directory');
+                file_put_contents($coverDirectory . '/' . $coverFileName, $file);
+                $album->setCover($coverFileName);
+
+                if ($album->getCover() !== null) {
+                    $oldCoverPath = $coverDirectory . '/' . $album->getCover();
+                    if ($this->filesystem->exists($oldCoverPath)) {
+                        $this->filesystem->remove($oldCoverPath);
+                    }
+                }
             }
 
-            
-            $album = new Album();
-            $album->setTitle($title)
-                ->setCategorie($categorie)
-                ->setYear($year)
-                ->setVisibility($visibility);
+            if ($visibility !== null) {
+                if ($visibility != 0 && $visibility != 1) {
+                    return $this->json([
+                        'error' => true,
+                        'message' => 'La valeur du champ visibility est invalide. Les valeurs autorisées sont 0 pour invisible, 1 pour visible.'
+                    ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                }
+                $album->setVisibility($visibility);
+            }
 
-            
-            $artist = $user->getArtist();
-            if (!$artist) {
+            $existingAlbum = $this->entityManager->getRepository(Album::class)->findOneBy(['title' => $title]);
+            if ($existingAlbum && $existingAlbum !== $album) {
                 return $this->json([
                     'error' => true,
-                    'message' => 'Accès refusé. Vous n\'avez pas l\'autorisation pour créer un album.'
-                ], JsonResponse::HTTP_FORBIDDEN);
+                    'message' => 'Ce titre est déjà pris. Veuillez en choisir un autre.'
+                ], JsonResponse::HTTP_CONFLICT);
             }
-            $album->setArtistUserIdUser($artist);
 
-            if ($coverData !== null) {
-                
-                $coverDirectory = $this->getParameter('cover_directory');
-                if (!$this->filesystem->exists($coverDirectory)) {
-                    $this->filesystem->mkdir($coverDirectory);
-                }
-            
-                
-                $mimeType = finfo_buffer(finfo_open(), base64_decode(explode(',', $coverData)[1]), FILEINFO_MIME_TYPE);
-                $extension = $mimeType === 'image/jpeg' ? 'jpg' : 'png';
-            
-                
-                $coverFileName = uniqid('album_cover_') . '.' . $extension;
-            
-                
-                $coverFilePath = $coverDirectory . '/' . $coverFileName;
-            
-            
-                file_put_contents($coverFilePath, base64_decode(explode(',', $coverData)[1]));
-            
-                
-                $album->setCover($coverFileName);
-                
-                
-                $this->entityManager->persist($album);
-                $this->entityManager->flush();
-            }
+            $this->entityManager->flush();
 
             return $this->json([
                 'error' => false,
-                'message' => 'Album créé avec succès.',
-                'album_id' => $album->getId() 
-            ], JsonResponse::HTTP_CREATED);
+                'message' => 'Album mis à jour avec succès.'
+            ], JsonResponse::HTTP_OK);
         } catch (\Exception $e) {
             return $this->json(['error' => true, 'message' => $e->getMessage()], JsonResponse::HTTP_BAD_REQUEST);
         }
     }    
 }
-
-
