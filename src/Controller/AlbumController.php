@@ -24,6 +24,7 @@ class AlbumController extends AbstractController
     private $artistRepository;
     private $jwtManager;
     private $filesystem;
+    private $tokenVerifier;
 
     public function __construct(
         EntityManagerInterface $entityManager,
@@ -31,7 +32,8 @@ class AlbumController extends AbstractController
         SerializerInterface $serializer,
         ArtistRepository $artistRepository,
         JWTTokenManagerInterface $jwtManager,
-        Filesystem $filesystem
+        Filesystem $filesystem,
+        TokenManagementController $tokenVerifier,
     ) {
         $this->entityManager = $entityManager;
         $this->validator = $validator;
@@ -39,6 +41,7 @@ class AlbumController extends AbstractController
         $this->serializer = $serializer;
         $this->jwtManager = $jwtManager;
         $this->filesystem = $filesystem;
+        $this->tokenVerifier = $tokenVerifier;
     }
 
     #[Route('/album/{id}', name: 'update_album', methods: ['POST'])]
