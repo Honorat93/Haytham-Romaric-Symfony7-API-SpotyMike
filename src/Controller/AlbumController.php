@@ -591,28 +591,29 @@ class AlbumController extends AbstractController
     }
     
     
-    
-    
-  /*  #[Route('/albums', name: 'get_albums', methods: ['GET'])]
+    #[Route('/albums', name: 'get_albums', methods: ['GET'])]
     public function getAllAlbums(Request $request): JsonResponse
     {
         try {
-            // Récupérer l'utilisateur actuellement connecté
-            $currentUser = $this->getUser()->getUserIdentifier();
+            $dataMiddleware = $this->tokenVerifier->checkToken($request);
+            if (gettype($dataMiddleware) === 'boolean') {
+                return $this->json(
+                    $this->tokenVerifier->sendJsonErrorToken($dataMiddleware),
+                    JsonResponse::HTTP_UNAUTHORIZED
+                );
+            }
+            $user = $dataMiddleware;
     
-            // Vérifier si un utilisateur est authentifié
-            if ($currentUser === null) {
+            if (!$user) {
                 return $this->json([
                     'error' => true,
-                    'message' => 'Authentification requise, vous devez être connecté pour effectuer cette action'
+                    'message' => "Authentification requise. Vous devez être connecté pour effectuer cette action."
                 ], JsonResponse::HTTP_UNAUTHORIZED);
             }
     
-            // Récupérer la page actuelle et la limite par page
             $page = $request->query->get("currentPage", 1);
             $limit = $request->query->get("limit", 5);
     
-            // Vérifier la validité des paramètres de pagination
             if (!is_numeric($page) || $page < 1 || !is_numeric($limit) || $limit < 1) {
                 return new JsonResponse([
                     'error' => true,
@@ -620,71 +621,144 @@ class AlbumController extends AbstractController
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
     
-            // Calculer l'offset pour la pagination
             $offset = ($page - 1) * $limit;
     
-            // Récupérer le nombre total d'albums
             $totalAlbums = $this->albumRepository->count([]);
     
-            // Récupérer les albums pour la page donnée
             $albums = $this->albumRepository->findBy([], null, $limit, $offset);
     
-            // Initialiser un tableau pour stocker les données des albums
+            if (empty($albums)) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Aucun album trouvé pour la page demandée.",
+                ], JsonResponse::HTTP_NOT_FOUND);
+            }
+    
+    
             $albumsData = [];
     
-            // Itérer sur chaque album récupéré
             foreach ($albums as $album) {
-                // Récupérer les détails de chaque chanson de l'album
-                $songsData = [];
+                $songs = [];
                 foreach ($album->getSongIdSong() as $song) {
-                    $artistsData = [];
-                    foreach ($song->getArtists() as $artist) {
-                        $artistsData[] = [
-                            'firstname' => $artist->getUser()->getFirstName(),
-                            'lastname' => $artist->getUser()->getLastName(),
-                            'fullname' => $artist->getUser()->getFullName(),
-                            'avatar' => $artist->getUser()->getAvatar(),
-                            'follower' => $artist->getUser()->getFollower(),
-                            'cover' => $artist->getUser()->getCover(),
-                            'sexe' => $artist->getUser()->getSexe(),
-                            'dateBirth' => $artist->getUser()->getDateBirth(),
-                            'createdAt' => $artist->getUser()->getCreateAt()->format('Y-m-d'),
-                        ];
-                    }
-    
-                    // Ajouter les détails de chaque chanson
-                    $songsData[] = [
+                    $songDetails = [
                         'id' => $song->getId(),
                         'title' => $song->getTitle(),
                         'cover' => $song->getCover(),
-                        'createdAt' => $song->getCreatedAt()->format('Y-m-d'),
-                        'artists' => $artistsData,
+                        'createdAt' => $song->getCreateAt(),
+                        'featuring' => []
                     ];
+    
+                    foreach ($song->getArtistIdUser() as $artist) {
+                        $artistUser = $artist->getArtistUserIdUser();
+                        if ($artistUser !== null) {
+                            $artistDetails = [
+                                'id' => $artistUser->getId(),
+                                'firstname' => $artistUser->getFirstName(),
+                                'lastname' => $artistUser->getLastName(),
+                                'fullname' => $artistUser->getFullName(),
+                                'avatar' => null,
+                                'follower' => $artistUser->getFollower(),
+                                'cover' => $artistUser->getCover(),
+                                'sexe' => $artistUser->getSexe(),
+                                'dateBirth' => $artistUser->getBirth(),
+                                'createdAt' => $artistUser->getCreateAt()
+                            ];
+    
+                            $avatarDirectory = $this->getParameter('avatar_directory');
+                            $avatarFilename = $artistUser->getFullname();
+                            $avatarFileExtensions = ['jpg', 'jpeg', 'png'];
+    
+                            foreach ($avatarFileExtensions as $extension) {
+                                $avatarFile = $avatarDirectory . '/' . $avatarFilename . '.' . $extension;
+                                if (file_exists($avatarFile)) {
+                                    $artistDetails['avatar'] = $avatarFile;
+                                    break;
+                                }
+                            }
+    
+                            $songDetails['artist'] = $artistDetails;
+                        }
+                    }
+    
+                    foreach ($song->getCollabSong() as $collabArtist) {
+                        $collabArtistUser = $collabArtist->getArtistUserIdUser();
+                        if ($collabArtistUser !== null) {
+                            $collabArtistDetails = [
+                                'id' => $collabArtistUser->getId(),
+                                'firstname' => $collabArtistUser->getFirstName(),
+                                'lastname' => $collabArtistUser->getLastName(),
+                                'fullname' => $collabArtistUser->getFullName(),
+                                'avatar' => null,
+                                'follower' => $collabArtistUser->getFollower(),
+                                'cover' => $collabArtistUser->getCover(),
+                                'sexe' => $collabArtistUser->getSexe(),
+                                'dateBirth' => $collabArtistUser->getBirth(),
+                                'createdAt' => $collabArtistUser->getCreateAt()
+                            ];
+    
+                            $avatarDirectory = $this->getParameter('avatar_directory');
+                            $avatarFilename = $collabArtistUser->getFullname();
+                            $avatarFileExtensions = ['jpg', 'jpeg', 'png'];
+    
+                            foreach ($avatarFileExtensions as $extension) {
+                                $avatarFile = $avatarDirectory . '/' . $avatarFilename . '.' . $extension;
+                                if (file_exists($avatarFile)) {
+                                    $collabArtistDetails['avatar'] = $avatarFile;
+                                    break;
+                                }
+                            }
+    
+                            $songDetails['featuring'][] = $collabArtistDetails;
+                        }
+                    }
+    
+                    $songs[] = $songDetails;
                 }
     
-                // Ajouter les détails de chaque album
-                $albumsData[] = [
+                $albumData = [
+                    'error' => false,
                     'id' => $album->getId(),
                     'nom' => $album->getNom(),
                     'categ' => $album->getCateg(),
+                    'label' => $album->getArtistUserIdUser()->getLabel()->getName(),
                     'cover' => $album->getCover(),
                     'year' => $album->getYear(),
-                    'songs' => $songsData,
-                    'artist' => [
-                        'firstname' => $album->getArtistUserIdUser()->getUserIdUser()->getFirstName(),
-                        'lastname' => $album->getArtistUserIdUser()->getUserIdUser()->getLastName(),
-                        'fullname' => $album->getArtistUserIdUser()->getFullName(),
-                        //'avatar' => $album->getArtistUserIdUser()->getAvatar(),
-                        'follower' => $album->getArtistUserIdUser()->getFollower(),
-                        'cover' => $album->getCover(),
-                        'sexe' => $album->getArtistUserIdUser()->getUserIdUser()->getSexe(),
-                        'dateBirth' => $album->getArtistUserIdUser()->getUserIdUser()->getBirth(),
-                        'createdAt' => $album->getArtistUserIdUser()->getCreateAt()->format('Y-m-d'),
-                    ],
+                    'createdAt' => $album->getCreateAt(),
+                    'songs' => $songs,
                 ];
+    
+                $artist = $album->getArtistUserIdUser();
+                if ($artist !== null) {
+                    $artistData = [
+                        'firstname' => $artist->getUserIdUser()->getFirstName(),
+                        'lastname' => $artist->getUserIdUser()->getLastName(),
+                        'fullname' => $artist->getFullName(),
+                        'avatar' => null,
+                        'follower' => $artist->getFollower(),
+                        'cover' => $album->getCover(),
+                        'sexe' => $artist->getUserIdUser()->getSexe(),
+                        'dateBirth' => $artist->getUserIdUser()->getBirth(),
+                        'createdAt' => $artist->getCreateAt()
+                    ];
+    
+                    $avatarDirectory = $this->getParameter('avatar_directory');
+                    $avatarFilename = $artist->getFullname();
+                    $avatarFileExtensions = ['jpg', 'jpeg', 'png'];
+    
+                    foreach ($avatarFileExtensions as $extension) {
+                        $avatarFile = $avatarDirectory . '/' . $avatarFilename . '.' . $extension;
+                        if (file_exists($avatarFile)) {
+                            $artistData['avatar'] = $avatarFile;
+                            break;
+                        }
+                    }
+    
+                    $albumData['artist'] = $artistData;
+                }
+    
+                $albumsData[] = $albumData;
             }
     
-            // Construction de la réponse avec les données des albums et les informations de pagination
             return $this->json([
                 'error' => false,
                 'albums' => $albumsData,
@@ -696,11 +770,10 @@ class AlbumController extends AbstractController
             ]);
         } catch (\Exception $e) {
             return $this->json([
-                'success' => false,
-                'error' => 'Error: ' . $e->getMessage(),
+                'error' => true,
+                'message' => 'Error: ' . $e->getMessage(),
             ], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
         }
-    }*/
-    
-}
+    }
+}    
    
