@@ -194,6 +194,24 @@ class AlbumController extends AbstractController
 
             $this->entityManager->flush();
 
+            if ($visibility !== null) {
+                if ($visibility != 0 && $visibility != 1) {
+                    return $this->json([
+                        'error' => true,
+                        'message' => 'La valeur du champ visibility est invalide. Les valeurs autorisées sont 0 pour invisible, 1 pour visible.'
+                    ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                }
+                $album->setVisibility($visibility);
+            }
+
+            $existingAlbum = $this->entityManager->getRepository(Album::class)->findOneBy(['title' => $title]);
+            if ($existingAlbum && $existingAlbum !== $album) {
+                return $this->json([
+                    'error' => true,
+                    'message' => 'Ce titre est déjà pris. Veuillez en choisir un autre.'
+                ], JsonResponse::HTTP_CONFLICT);
+            }
+
             return $this->json([
                 'error' => false,
                 'message' => 'Album mis à jour avec succès.'
