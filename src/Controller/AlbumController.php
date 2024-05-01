@@ -414,83 +414,123 @@ class AlbumController extends AbstractController
     } 
     
     #[Route('/album/{id}/song', name: 'add_song', methods: ['POST'])]
-    public function addSong(Request $request): JsonResponse
+    public function addSong(Request $request, int $id): JsonResponse
     {
-    try {
-        $dataMiddleware = $this->tokenVerifier->checkToken($request);
-        if (gettype($dataMiddleware) === 'boolean') {
-            return $this->json(
-                $this->tokenVerifier->sendJsonErrorToken($dataMiddleware),
-                JsonResponse::HTTP_UNAUTHORIZED
-            );
-        }
-        $user = $dataMiddleware;
-
-        if (!$user) {
+        try {
+            $dataMiddleware = $this->tokenVerifier->checkToken($request);
+            if (gettype($dataMiddleware) === 'boolean') {
+                return $this->json(
+                    $this->tokenVerifier->sendJsonErrorToken($dataMiddleware),
+                    JsonResponse::HTTP_UNAUTHORIZED
+                );
+            }
+            $user = $dataMiddleware;
+    
+            if (!$user) {
+                return $this->json([
+                    'error' => true,
+                    'message' => "Authentification requise. Vous devez être connecté pour effectuer cette action."
+                ], JsonResponse::HTTP_UNAUTHORIZED);
+            }
+    
+            // Récupérer l'album en fonction de l'ID passé dans l'URL
+            $album = $this->entityManager->getRepository(Album::class)->find($id);
+    
+            // Vérifier si l'album existe
+            if (!$album) {
+                return $this->json([
+                    'error' => true,
+                    'message' => "Aucun album trouvé correspondant à l'ID fourni."
+                ], JsonResponse::HTTP_NOT_FOUND);
+            }
+    
+            // Vérifier si l'utilisateur a l'autorisation d'accéder à cet album
+            if ($album->getArtistUserIdUser() !== $user->getArtist()) {
+                return $this->json([
+                    'error' => true,
+                    'message' => "Vous n'avez pas l'autorisation pour accéder à cet album."
+                ], JsonResponse::HTTP_FORBIDDEN);
+            }
+    
+            // Vérifier la présence de la couverture de l'album
+            $coverDirectory = $this->getParameter('cover_directory');
+            $albumCover = $album->getCover();
+            if (!$albumCover || !file_exists($coverDirectory . '/' . $albumCover)) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le fichier de couverture de l'album n'existe pas."
+                ], JsonResponse::HTTP_NOT_FOUND);
+            }
+    
+            // Utiliser le chemin de la couverture de l'album comme la couverture de la chanson
+            $songCover = $coverDirectory . '/' . $albumCover;
+    
+            // Récupérer les données de la requête
+            $songFile = $request->files->get('song');
+            $songId = $request->request->get('id');
+    
+            // Vérifier la taille du fichier
+            /* $fileSize = $songFile->getSize();
+            $minFileSize = 1 * 1024 * 1024;
+            $maxFileSize = 7 * 1024 * 1024;
+            if ($fileSize < $minFileSize || $fileSize > $maxFileSize) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb."
+                ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+            }*/
+    
+            // Vérifier le type MIME du fichier audio
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $mimeType = $finfo->file($songFile->getPathname());
+            $allowedMimeTypes = ['audio/mpeg', 'audio/mp3', 'audio/x-wav'];
+            if (!in_array($mimeType, $allowedMimeTypes)) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Erreur sur le format du fichier qui n'est pas pris en charge."
+                ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+            }
+    
+            $localFilePath = $songFile->getPathname();
+    
+            // Utiliser le nom du fichier audio comme titre de la chanson
+            $songTitle = pathinfo($localFilePath, PATHINFO_FILENAME);
+    
+            // Utiliser le chemin local du fichier audio comme URL de la chanson
+            $url = $localFilePath;
+    
+            // Créer une nouvelle instance de chanson avec les données
+            $song = new Song();
+            $song->setIdSong($songId); // Définir l'identifiant de la chanson
+            $song->setTitle($songTitle); // Utiliser le nom du fichier audio comme titre de la chanson
+            $song->setUrl($url); // Utiliser le chemin local du fichier audio comme URL de la chanson
+            $song->setAlbum($album);
+            $song->setCover($songCover); // Définir la couverture de la chanson
+            $song->setCreateAt(new \DateTimeImmutable());
+    
+            // Déplacer le fichier audio vers le répertoire de stockage des chansons
+            $songDirectory = $this->getParameter('song_directory');
+            $songFileName = uniqid('song_') . '.' . $songFile->getClientOriginalExtension();
+            $songFile->move($songDirectory, $songFileName);
+            $song->setUrl($songFileName);
+    
+            // Enregistrer la chanson dans la base de données
+            $this->entityManager->persist($song);
+            $this->entityManager->flush();
+    
+            return $this->json([
+                'error' => false,
+                'message' => 'Album mis à avec succès.',
+                'idSong' => $song->getId()
+            ], JsonResponse::HTTP_CREATED);
+        } catch (\Exception $e) {
             return $this->json([
                 'error' => true,
-                'message' => "Authentification requise. Vous devez être connecté pour effectuer cette action."
-            ], JsonResponse::HTTP_UNAUTHORIZED);
+                'message' => $e->getMessage()
+            ], JsonResponse::HTTP_BAD_REQUEST);
         }
-
-        $id = $request->request->get('id');
-        $songFile = $request->files->get('song');
-
-        $album = $this->entityManager->getRepository(Album::class)->find($id);
-        if (!$album) {
-            return $this->json([
-                'error' => true,
-                'message' => "Aucun album trouvé correspondant au nom fourni."
-            ], JsonResponse::HTTP_NOT_FOUND);
-        }
-
-        if ($album->getArtistUserIdUser() !== $user->getArtist()) {
-            return $this->json([
-                'error' => true,
-                'message' => "Vous n'avez pas l'autorisation pour accéder à cet album."
-            ], JsonResponse::HTTP_FORBIDDEN);
-        }
-
-        $fileSize = $songFile->getSize();
-        $minFileSize = 1 * 1024 * 1024;
-        $maxFileSize = 7 * 1024 * 1024;
-
-        if ($fileSize < $minFileSize || $fileSize > $maxFileSize) {
-            return new JsonResponse([
-                'error' => true,
-                'message' => "Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb."
-            ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        
-        $allowedMimeTypes = ['audio/mpeg', 'audio/mp3', 'audio/x-wav'];
-        $fileMimeType = $songFile->getClientMimeType();
-
-        if (!in_array($fileMimeType, $allowedMimeTypes)) {
-            return new JsonResponse([
-                'error' => true,
-                'message' => "Erreur sur le format du fichier qui n'est pas pris en charge."
-            ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
-        }
-        $songFileName = uniqid('song_') . '.' . $songFile->getClientOriginalExtension();
-        $songDirectory = $this->getParameter('song_directory');
-        $songFile->move($songDirectory, $songFileName);
-
-        $song = new Song();
-        $song->setIdSong($songFileName);
-        $song->setAlbum($album);
-        $song->setCreateAt(new \DateTimeImmutable());
-
-        $entityManager = $this->getDoctrine()->getManager();
-        $entityManager->persist($song);
-        $entityManager->flush();
-
-        return $this->json(['error' => false, 'message' => 'Chanson ajoutée avec succès', 'idSong' => $song->getId()], JsonResponse::HTTP_CREATED);
-    } catch (\Exception $e) {
-        return new JsonResponse(['error' => true, 'message' => $e->getMessage()], JsonResponse::HTTP_BAD_REQUEST);
     }
-}
-
+        
     #[Route('/album/{id}', name: 'get_album', methods: ['GET'])]
     public function getAlbum(Request $request, int $id): JsonResponse
     {
@@ -1082,4 +1122,3 @@ class AlbumController extends AbstractController
 }*/
 
 }
-
