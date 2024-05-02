@@ -181,6 +181,7 @@ class Album
     public function isDeleted(): bool
 {
 
+    
     return $this->getVisibility() === 0;
 }
     
