@@ -181,7 +181,6 @@ class Album
     public function isDeleted(): bool
 {
 
-    // Pour l'exemple, supposons que l'album est marqué comme supprimé s'il a une valeur de visibilité égale à 0.
     return $this->getVisibility() === 0;
 }
     
