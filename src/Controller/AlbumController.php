@@ -424,7 +424,7 @@ class AlbumController extends AbstractController
 
 
 
-    #[Route('/album/search', name: 'search_album', methods: ['GET'])]
+      #[Route('/album/search', name: 'search_album', methods: ['GET'])]
     public function searchAlbum(Request $request): JsonResponse
     {
         try {
@@ -445,15 +445,15 @@ class AlbumController extends AbstractController
             }
 
             $limit = $request->query->get('limit', 5);
-            $category = $request->query->get('category');
+            $category = $request->query->get('categorie');
             $featurings = $request->query->get('featuring');
             $labelId = $request->query->get('label');
             $fullname = $request->query->get('fullname');
-            $currentPage = $request->query->get('currentPage', 1);
-            $nom = $request->query->get('nom');
+            $currentPage = $request->query->get('currentPage');
+            $nom = $request->query->get('title');
             $year = $request->query->get('year');
 
-            $additionalParams = array_diff(array_keys($request->query->all()), ['nom', 'category', 'currentPage', 'featuring']);
+            $additionalParams = array_diff(array_keys($request->query->all()), ['title', 'categorie', 'currentPage', 'featuring']);
             if (!empty($additionalParams)) {
                 return $this->json([
                     'error' => true,
@@ -508,7 +508,7 @@ class AlbumController extends AbstractController
 
             $criteria = [];
             if ($category) {
-                $criteria['category'] = $category;
+                $criteria['categorie'] = $category;
             }
             if ($featurings) {
                 $criteria['featuring'] = $featurings;
@@ -523,7 +523,7 @@ class AlbumController extends AbstractController
                 $criteria['fullname'] = $fullname;
             }
             if ($nom) {
-                $criteria['nom'] = $nom;
+                $criteria['title'] = $nom;
             }
             $totalAlbums = $this->albumRepository->count($criteria);
 
@@ -663,7 +663,7 @@ class AlbumController extends AbstractController
                 'error' => false,
                 'albums' => $albumsData,
                 'pagination' => [
-                    'currentPage' => $page,
+                    'currentPage' => $currentPage,
                     'totalPages' => ceil($totalAlbums / $limit),
                     'totalAlbums' => $totalAlbums,
                 ]
