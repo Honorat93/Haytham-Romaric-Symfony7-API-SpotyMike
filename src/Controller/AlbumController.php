@@ -128,23 +128,27 @@ class AlbumController extends AbstractController
                 $album->setTitle($title);
             }
 
-            if ($categorie !== null) {
+            if (!empty($categorie)) {
                 $categorieArray = json_decode($categorie, true);
+    
                 if (!is_array($categorieArray) || empty($categorieArray)) {
                     return $this->json([
                         'error' => true,
                         'message' => "Erreur de validation des données."
                     ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
                 }
-                $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'Mike'];
+    
+                $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'mike'];
                 foreach ($categorieArray as $cat) {
-                    if (in_array($cat, $invalidCategories)) {
+                    if (in_array(strtolower($cat), $invalidCategories)) {
                         return $this->json([
                             'error' => true,
-                            'message' => "Les catégorie ciblée sont invalide."
+                            'message' => "Les catégories ciblées sont invalides. Veuillez fournir des catégories valides."
                         ], JsonResponse::HTTP_BAD_REQUEST);
                     }
                 }
+            }
+    
                 $album->setCategorie($categorie);
             }
 
