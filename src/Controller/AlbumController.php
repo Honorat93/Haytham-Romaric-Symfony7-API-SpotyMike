@@ -109,14 +109,7 @@ class AlbumController extends AbstractController
                 }
             }
            
-            
-            if (!$user->getArtist()) {
-                return $this->json([
-                    'error' => true,
-                    'message' => "Accès refusé. Vous n'avez pas l'autorisation pour créer un album."
-                ], JsonResponse::HTTP_FORBIDDEN);
-            }
-                                           
+                           
             
             if (empty($title) || strlen($title) < 1 || strlen($title) > 90 || !preg_match('/^[a-zA-Z0-9\s\'"!@#$%^&*()_+=\-,.?;:]+$/u', $title)) {
                 return $this->json(['error' => true, 'message' => "Erreur de validation des données pour le champ 'title'."], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
@@ -134,7 +127,7 @@ class AlbumController extends AbstractController
                 $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'Mike'];
                 foreach ($categorieArray as $cat) {
                     if (in_array($cat, $invalidCategories)) {
-                        return $this->json(['error' => true, 'message' => "Les catégories ciblées sont invalides"], JsonResponse::HTTP_BAD_REQUEST);
+                        return $this->json(['error' => true, 'message' => "Les catégorie ciblée sont invalide"], JsonResponse::HTTP_BAD_REQUEST);
                     }
                 }
             }
