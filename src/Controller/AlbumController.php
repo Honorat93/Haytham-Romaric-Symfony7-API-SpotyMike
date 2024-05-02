@@ -106,7 +106,7 @@ class AlbumController extends AbstractController
             if (!$user->getArtist()) {
                 return $this->json([
                     'error' => true,
-                    'message' => "Accès refusé. Vous n'avez pas l'autorisation pour créer un album."
+                    'message' => "Accès refusé. Vous n'avez pas l'autorisation pour accéder à cet album."
                 ], JsonResponse::HTTP_FORBIDDEN);
             }
     
@@ -129,7 +129,7 @@ class AlbumController extends AbstractController
                     ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
                 }
     
-                $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'mike'];
+                $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul','country', 'hip hop', 'mike'];
                 foreach ($categorieArray as $cat) {
                     if (in_array(strtolower($cat), $invalidCategories)) {
                         return $this->json([
@@ -334,7 +334,7 @@ class AlbumController extends AbstractController
                     ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
                 }
     
-                $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'mike'];
+                $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul','country', 'hip hop', 'mike'];
                 foreach ($categorieArray as $cat) {
                     if (in_array(strtolower($cat), $invalidCategories)) {
                         return $this->json([
@@ -347,7 +347,6 @@ class AlbumController extends AbstractController
             }
     
                 
-            
 
             if ($cover !== null) {
                 $explodeData = explode(',', $cover);
@@ -487,7 +486,7 @@ public function searchAlbum(Request $request): JsonResponse
             }
 
 
-            $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'Mike'];
+            $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul','country', 'hip hop', 'Mike'];
 
 
             foreach ($categoryArray as $cat) {
