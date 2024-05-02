@@ -80,7 +80,7 @@ class AlbumController extends AbstractController
         }
 
         $limit = $request->query->get('limit', 5);
-        $categorie = $request->query->get('category');
+        $category = $request->query->get('categ');
         $featurings = $request->query->get('featuring');
         $labelId = $request->query->get('label');
         $fullname = $request->query->get('fullname');
@@ -89,7 +89,7 @@ class AlbumController extends AbstractController
         $year = $request->query->get('year');
 
 
-        $additionalParams = array_diff(array_keys($request->query->all()), ['nom', 'category', 'currentPage', 'featuring']);
+        $additionalParams = array_diff(array_keys($request->query->all()), ['nom', 'categ', 'currentPage', 'featuring']);
         if (!empty($additionalParams)) {
             return $this->json([
                 'error' => true,
@@ -111,16 +111,16 @@ class AlbumController extends AbstractController
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
-        if (!empty($categorie)) {
-            $categorieArray = json_decode($categorie, true);
+        if (!empty($category)) {
+            $categoryArray = json_decode($category, true);
         
-            if (!is_array($categorieArray) || empty($categorieArray)) {
+            if (!is_array($categoryArray) || empty($categoryArray)) {
                 return $this->json(['error' => true, 'message' => "Envoie un tableau dans la requete."], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
             }
 
             
             $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'Mike'];
-            foreach ($categorieArray as $cat) {
+            foreach ($categoryArray as $cat) {
                 if (in_array($cat, $invalidCategories)) {
                     return $this->json(['error' => true, 'message' => "Les catégorie ciblée sont invalide"], JsonResponse::HTTP_BAD_REQUEST);
                 }
@@ -138,8 +138,8 @@ class AlbumController extends AbstractController
         $offset = ($currentPage - 1) * $limit;
 
         $criteria = [];
-        if ($categorie) {
-            $criteria['category'] = $categorie;
+        if ($category) {
+            $criteria['categ'] = $category;
         }
         if ($featurings) {
             $criteria['featuring'] = $featurings;
@@ -253,7 +253,7 @@ class AlbumController extends AbstractController
                 'error' => false,
                 'id' => $album->getId(),
                 'nom' => $album->getNom(),
-                'category' => $album->getCategory(),
+                'categ' => $album->getCateg(),
                 'label' => $album->getArtistUserIdUser()->getLabel()->getName(),
                 'cover' => $album->getCover(),
                 'year' => $album->getYear(),
@@ -309,7 +309,5 @@ class AlbumController extends AbstractController
         ], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
     }
 }
-
-   
 
 }

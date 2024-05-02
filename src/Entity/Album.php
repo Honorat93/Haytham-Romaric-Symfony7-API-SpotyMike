@@ -22,7 +22,7 @@ class Album
     private ?string $nom = null;
 
     #[ORM\Column(length: 20)]
-    private ?string $category = null;
+    private ?string $categ = null;
 
     #[ORM\Column(length: 125)]
     private ?string $cover = null;
@@ -77,14 +77,14 @@ class Album
         return $this;
     }
 
-    public function getCategory(): ?string
+    public function getCateg(): ?string
     {
-        return $this->category;
+        return $this->categ;
     }
 
-    public function setCategory(string $category): static
+    public function setCateg(string $categ): static
     {
-        $this->category = $category;
+        $this->categ = $categ;
 
         return $this;
     }
@@ -181,6 +181,7 @@ class Album
     public function isDeleted(): bool
 {
 
+    
     return $this->getVisibility() === 0;
 }
     
