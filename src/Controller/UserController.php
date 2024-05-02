@@ -228,7 +228,6 @@ class UserController extends AbstractController
                 ], JsonResponse::HTTP_FORBIDDEN);
             }
 
-            //verify if user is active
             $user = $this->userRepository->findOneBy(['email' => $email]);
             if ($user && !$user->getIsActive()) {
                 return new JsonResponse([
@@ -309,6 +308,8 @@ class UserController extends AbstractController
 
             $artist = $user->getArtist();
 
+            $sexeLabel = $user->getSexe() ? 'Homme' : 'Femme';
+
             if ($artist !== null) {
 
                 $user = $artist->getUserIdUser();
@@ -331,8 +332,8 @@ class UserController extends AbstractController
                 foreach ($albums as $album) {
                     $albumsArray[] = [
                         'id' => $album->getId(),
-                        'nom' => $album->getNom(),
-                        'categ' => $album->getCateg(),
+                        'nom' => $album->getTitle(),
+                        'categ' => $album->getCategorie(),
                         'label' => $artist->getLabel(),
                         'cover' => $album->getCover(),
                         'year' => $album->getYear(),
@@ -370,7 +371,7 @@ class UserController extends AbstractController
                 'lastname' => $user->getLastName(),
                 'email' => $user->getEmail(),
                 'tel' => $user->getTel(),
-                'sexe' => $user->getSexe(),
+                'sexe' => $sexeLabel,
                 'birth' => $user->getBirth()->format('d-m-Y'),
                 'createAt' => $user->getCreateAt()->format('Y-m-d\TH:i:sP'),
                 'artist' => $artistArray,

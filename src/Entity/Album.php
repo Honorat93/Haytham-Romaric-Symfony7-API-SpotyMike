@@ -19,10 +19,10 @@ class Album
     //private ?string $idAlbum = null;
 
     #[ORM\Column(length: 90)]
-    private ?string $nom = null;
+    private ?string $title = null;
 
     #[ORM\Column(length: 20)]
-    private ?string $categ = null;
+    private ?string $categorie = null;
 
     #[ORM\Column(length: 125)]
     private ?string $cover = null;
@@ -65,26 +65,26 @@ class Album
         return $this;
     }*/
 
-    public function getNom(): ?string
+    public function getTitle(): ?string
     {
-        return $this->nom;
+        return $this->title;
     }
 
-    public function setNom(string $nom): static
+    public function setTitle(string $title): static
     {
-        $this->nom = $nom;
+        $this->title = $title;
 
         return $this;
     }
 
-    public function getCateg(): ?string
+    public function getCategorie(): ?string
     {
-        return $this->categ;
+        return $this->categorie;
     }
 
-    public function setCateg(string $categ): static
+    public function setCategorie(string $categorie): static
     {
-        $this->categ = $categ;
+        $this->categorie = $categorie;
 
         return $this;
     }
