@@ -394,8 +394,8 @@ class ArtistController extends AbstractController
             foreach ($albums as $album) {
                 $albumData = [
                     'id' => $album->getId(),
-                    'nom' => $album->getTitle(),
-                    'categ' => $album->getCategorie(),
+                    'nom' => $album->getNom(),
+                    'categ' => $album->getCateg(),
                     'label' => $artist->getLabel(),
                     'cover' => $album->getCover(),
                     'year' => $album->getYear(),
@@ -521,8 +521,8 @@ class ArtistController extends AbstractController
             foreach ($albums as $album) {
                 $albumsArray[] = [
                     'id' => $album->getId(),
-                    'nom' => $album->getTitle(),
-                    'categ' => $album->getCategorie(),
+                    'nom' => $album->getNom(),
+                    'categ' => $album->getCateg(),
                     'label' => $artist->getLabel(),
                     'cover' => $album->getCover(),
                     'year' => $album->getYear(),
