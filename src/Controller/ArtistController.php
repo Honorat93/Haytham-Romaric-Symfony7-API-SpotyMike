@@ -197,7 +197,7 @@ class ArtistController extends AbstractController
 
                 return new JsonResponse([
                     'success' => true,
-                    'message' => 'Le compte artiste a été mis à jour avec succès.',
+                    'message' => 'Les informations de l\'artiste ont été mises à jour avec succès.',
                 ]);
             } else {
                 $fullname = $request->request->get('fullname');
@@ -219,8 +219,7 @@ class ArtistController extends AbstractController
                         [
                             'error' => true,
                             'message' => 'Vous devez au moins avoir 16 ans pour être artiste.'
-                        ], Response::HTTP_BAD_REQUEST
-                    );
+                        ], Response::HTTP_FORBIDDEN);
                 }
 
                 $artist = $this->artistRepository->findOneBy(['fullname' => $fullname]);
@@ -234,7 +233,7 @@ class ArtistController extends AbstractController
                 if (!preg_match('/^\d+$/', $labelId)) {
                     return new JsonResponse([
                         'error' => true,
-                        'message' => "L'id du label doit être un nombre valide.",
+                        'message' => "Le format de l'id du label est invalides.",
                     ], JsonResponse::HTTP_BAD_REQUEST);
                 }
 
