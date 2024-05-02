@@ -106,7 +106,7 @@ class AlbumController extends AbstractController
             if (!$user->getArtist()) {
                 return $this->json([
                     'error' => true,
-                    'message' => "Vous n'avez pas l'autorisation pour créer un album."
+                    'message' => "Vous n'avez pas l'autorisation pour accéder à cet album."
                 ], JsonResponse::HTTP_FORBIDDEN);
             }
 
@@ -134,7 +134,7 @@ class AlbumController extends AbstractController
                     if (in_array(strtolower($cat), $invalidCategories)) {
                         return $this->json([
                             'error' => true,
-                            'message' => "Les catégories ciblées sont invalides. Veuillez fournir des catégories valides."
+                            'message' => "Les catégorie ciblée sont invalide."
                         ], JsonResponse::HTTP_BAD_REQUEST);
                     }
                 }
@@ -339,7 +339,7 @@ class AlbumController extends AbstractController
                     if (in_array(strtolower($cat), $invalidCategories)) {
                         return $this->json([
                             'error' => true,
-                            'message' => "Les catégories ciblées sont invalides. Veuillez fournir des catégories valides."
+                            'message' => "Les catégorie ciblée sont invalide."
                         ], JsonResponse::HTTP_BAD_REQUEST);
                     }
                 }
@@ -491,7 +491,7 @@ class AlbumController extends AbstractController
                     if (in_array(strtolower($cat), $invalidCategories)) {
                         return $this->json([
                             'error' => true,
-                            'message' => "Les catégories ciblées sont invalides."
+                            'message' => "Les catégorie ciblée sont invalide."
                         ], JsonResponse::HTTP_BAD_REQUEST);
                     }
                 }
