@@ -172,17 +172,12 @@ class Album
         return $this->visibility;
     }
 
-    public function setVisibility(int $visibility): static
+    public function setVisibility(?int $visibility): static
     {
         $this->visibility = $visibility;
+
         return $this;
     }
 
-    public function isDeleted(): bool
-{
 
-    // Pour l'exemple, supposons que l'album est marqué comme supprimé s'il a une valeur de visibilité égale à 0.
-    return $this->getVisibility() === 0;
-}
-    
 }
