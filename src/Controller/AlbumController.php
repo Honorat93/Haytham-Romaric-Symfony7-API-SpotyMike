@@ -810,8 +810,8 @@ class AlbumController extends AbstractController
             $albumData = [
                 'error' => false,
                 'id' => $album->getId(),
-                'nom' => $album->getNom(),
-                'categ' => $album->getCateg(),
+                'nom' => $album->getTitle(),
+                'categ' => $album->getCategorie(),
                 'label' => $album->getArtistUserIdUser()->getLabel()->getName(),
                 'cover' => $album->getCover(),
                 'year' => $album->getYear(),
