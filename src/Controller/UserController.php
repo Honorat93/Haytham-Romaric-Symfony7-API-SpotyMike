@@ -332,8 +332,8 @@ class UserController extends AbstractController
                 foreach ($albums as $album) {
                     $albumsArray[] = [
                         'id' => $album->getId(),
-                        'nom' => $album->getNom(),
-                        'categ' => $album->getCateg(),
+                        'nom' => $album->getTitle(),
+                        'categ' => $album->getCategorie(),
                         'label' => $artist->getLabel(),
                         'cover' => $album->getCover(),
                         'year' => $album->getYear(),
