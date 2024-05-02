@@ -141,7 +141,7 @@ class AlbumController extends AbstractController
                     if (in_array($cat, $invalidCategories)) {
                         return $this->json([
                             'error' => true,
-                            'message' => "Les catégories ciblée sont invalide."
+                            'message' => "Les catégorie ciblée sont invalide."
                         ], JsonResponse::HTTP_BAD_REQUEST);
                     }
                 }
