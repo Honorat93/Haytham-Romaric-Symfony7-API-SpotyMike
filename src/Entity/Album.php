@@ -72,7 +72,7 @@ class Album
 
     public function setNom(string $nom): static
     {
-        $this->title = $nom;
+        $this->nom = $nom;
 
         return $this;
     }
@@ -181,6 +181,7 @@ class Album
     public function isDeleted(): bool
 {
 
+    
     return $this->getVisibility() === 0;
 }
     

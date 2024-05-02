@@ -350,7 +350,7 @@ class UserController extends AbstractController
                     ];
                 }
 
-                $artistArray = [
+                /*$artistArray = [
                     'id' => $artist->getId(),
                     'fullname' => $artist->getFullname(),
                     'description' => $artist->getDescription(),
@@ -360,7 +360,7 @@ class UserController extends AbstractController
                     'follower' => $followersCount,
                     'albums' => $albumsArray,
                     'songs' => $songsArray,
-                ];
+                ];*/
             } else {
                 $artistArray = [];
             }
