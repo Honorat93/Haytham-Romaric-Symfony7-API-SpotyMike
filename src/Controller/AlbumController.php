@@ -555,8 +555,8 @@ class AlbumController extends AbstractController
                         if ($artistUser !== null) {
                             $artistDetails = [
                                 'id' => $artistUser->getId(),
-                                'firstname' => $artistUser->getFirstName(),
-                                'lastname' => $artistUser->getLastName(),
+                                'firstname' => $artistUser->getArtistUserIdUser()->getFirstName(),
+                                'lastname' => $artistUser->getArtistUserIdUser()->getLastName(),
                                 'fullname' => $artistUser->getFullName(),
                                 'avatar' => null,
                                 'follower' => $artistUser->getFollower(),
@@ -587,8 +587,8 @@ class AlbumController extends AbstractController
                         if ($collabArtistUser !== null) {
                             $collabArtistDetails = [
                                 'id' => $collabArtistUser->getId(),
-                                'firstname' => $collabArtistUser->getFirstName(),
-                                'lastname' => $collabArtistUser->getLastName(),
+                                'firstname' => $collabArtistUser->getArtistUserIdUser()->getFirstName(),
+                                'lastname' => $collabArtistUser->getArtistUserIdUser()->getLastName(),
                                 'fullname' => $collabArtistUser->getFullName(),
                                 'avatar' => null,
                                 'follower' => $collabArtistUser->getFollower(),
@@ -631,8 +631,8 @@ class AlbumController extends AbstractController
                 $artist = $album->getArtistUserIdUser();
                 if ($artist !== null) {
                     $artistData = [
-                        'firstname' => $user->getFirstName(),
-                        'lastname' => $user->getLastName(),
+                        'firstname' => $user->getArtistUserIdUser()->getFirstName(),
+                        'lastname' => $user->getArtistUserIdUser()->getLastName(),
                         'fullname' => $artist->getFullName(),
                         'avatar' => null,
                         'follower' => $artist->getFollower(),
@@ -748,8 +748,8 @@ class AlbumController extends AbstractController
 
                         $artistDetails = [
                             'id' => $artistUser->getId(),
-                            'firstname' => $artistUser->getFirstName(),
-                            'lastname' => $artistUser->getLastName(),
+                            'firstname' => $artistUser->getArtistUserIdUser()->getFirstName(),
+                            'lastname' => $artistUser->getArtistUserIdUser()->getLastName(),
                             'fullname' => $artistUser->getFullName(),
                             'avatar' => null,
                             'follower' => $artistUser->getFollower(),
@@ -782,8 +782,8 @@ class AlbumController extends AbstractController
 
                         $collabArtistDetails = [
                             'id' => $collabArtistUser->getId(),
-                            'firstname' => $collabArtistUser->getFirstName(),
-                            'lastname' => $collabArtistUser->getLastName(),
+                            'firstname' => $collabArtistUser->getArtistUserIdUser()->getFirstName(),
+                            'lastname' => $collabArtistUser->getArtistUserIdUser()->getLastName(),
                             'fullname' => $collabArtistUser->getFullName(),
                             'avatar' => null,
                             'follower' => $collabArtistUser->getFollower(),
@@ -831,8 +831,8 @@ class AlbumController extends AbstractController
             $artist = $album->getArtistUserIdUser();
             if ($artist !== null) {
                 $artistData = [
-                    'firstname' => $user->getFirstName(),
-                    'lastname' => $user->getLastName(),
+                    'firstname' => $user->getArtistUserIdUser()->getFirstName(),
+                    'lastname' => $user->getArtistUserIdUser()->getLastName(),
                     'fullname' => $artist->getFullName(),
                     'avatar' => null,
                     'follower' => $artist->getFollower(),
@@ -928,8 +928,8 @@ class AlbumController extends AbstractController
                         if ($artistUser !== null) {
                             $artistDetails = [
                                 'id' => $artistUser->getId(),
-                                'firstname' => $artistUser->getFirstName(),
-                                'lastname' => $artistUser->getLastName(),
+                                'firstname' => $artistUser->getArtistUserIdUser()->getFirstName(),
+                                'lastname' => $artistUser->getArtistUserIdUser()->getLastName(),
                                 'fullname' => $artistUser->getFullName(),
                                 'avatar' => null,
                                 'follower' => $artistUser->getFollower(),
@@ -960,8 +960,8 @@ class AlbumController extends AbstractController
                         if ($collabArtistUser !== null) {
                             $collabArtistDetails = [
                                 'id' => $collabArtistUser->getId(),
-                                'firstname' => $collabArtistUser->getFirstName(),
-                                'lastname' => $collabArtistUser->getLastName(),
+                                'firstname' => $collabArtistUser->getArtistUserIdUser()->getFirstName(),
+                                'lastname' => $collabArtistUser->getArtistUserIdUser()->getLastName(),
                                 'fullname' => $collabArtistUser->getFullName(),
                                 'avatar' => null,
                                 'follower' => $collabArtistUser->getFollower(),
