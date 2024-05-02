@@ -6,6 +6,7 @@
 parameters:
     avatar_directory: '%kernel.project_dir%/public/upload/avatar'
     cover_directory: '%kernel.project_dir%/public/upload/cover'
+    song_directory: '%kernel.project_dir%/public/upload/songs'
 
 services:
     # default configuration for services in *this* file
