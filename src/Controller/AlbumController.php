@@ -60,7 +60,7 @@ class AlbumController extends AbstractController
     }
 
     #[Route('/album/search', name: 'search_album', methods: ['GET'])]
-    public function searchAlbum(Request $request): JsonResponse
+public function searchAlbum(Request $request): JsonResponse
 {
     try {
         $dataMiddleware = $this->tokenVerifier->checkToken($request);
@@ -80,7 +80,7 @@ class AlbumController extends AbstractController
         }
 
         $limit = $request->query->get('limit', 5);
-        $category = $request->query->get('categ');
+        $category = $request->query->get('category');
         $featurings = $request->query->get('featuring');
         $labelId = $request->query->get('label');
         $fullname = $request->query->get('fullname');
@@ -89,7 +89,7 @@ class AlbumController extends AbstractController
         $year = $request->query->get('year');
 
 
-        $additionalParams = array_diff(array_keys($request->query->all()), ['nom', 'categ', 'currentPage', 'featuring']);
+        $additionalParams = array_diff(array_keys($request->query->all()), ['nom', 'category', 'currentPage', 'featuring']);
         if (!empty($additionalParams)) {
             return $this->json([
                 'error' => true,
@@ -98,14 +98,14 @@ class AlbumController extends AbstractController
         }
 
         if ($year && (!is_numeric($year))) {
-            return new JsonResponse([
+            return $this->json([
                 'error' => true,
                 'message' => "L'année n'est pas valide."
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
         if (!is_numeric($currentPage) || $currentPage < 1 || !is_numeric($limit) || $limit < 1) {
-            return new JsonResponse([
+            return $this->json([
                 'error' => true,
                 'message' => "Le paramètre de pagination est invalide. Veuillez fournir un numéro de page valide.",
             ], JsonResponse::HTTP_BAD_REQUEST);
@@ -115,31 +115,36 @@ class AlbumController extends AbstractController
             $categoryArray = json_decode($category, true);
         
             if (!is_array($categoryArray) || empty($categoryArray)) {
-                return $this->json(['error' => true, 'message' => "Envoie un tableau dans la requete."], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                return $this->json([
+                    'error' => true,
+                    'message' => "Les données de catégorie fournies ne sont pas valides. Veuillez soumettre un tableau valide."
+                ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
             }
 
-            
             $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'Mike'];
             foreach ($categoryArray as $cat) {
-                if (in_array($cat, $invalidCategories)) {
-                    return $this->json(['error' => true, 'message' => "Les catégorie ciblée sont invalide"], JsonResponse::HTTP_BAD_REQUEST);
+                if (in_array(strtolower($cat), $invalidCategories)) {
+                    return $this->json([
+                        'error' => true,
+                        'message' => "Les catégories ciblées sont invalides. Veuillez fournir des catégories valides."
+                    ], JsonResponse::HTTP_BAD_REQUEST);
                 }
             }
         }
 
-                if (!empty($featurings) && !is_array($featurings)) {
-                    return new JsonResponse([
-                        'error' => true,
-                        'message' => "Les featuring ciblée sont invalide.",
-                    ], JsonResponse::HTTP_BAD_REQUEST);
-                }
+        if (!empty($featurings) && !is_array($featurings)) {
+            return $this->json([
+                'error' => true,
+                'message' => "Les featuring ciblées sont invalides. Veuillez soumettre un tableau valide."
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
         
 
         $offset = ($currentPage - 1) * $limit;
 
         $criteria = [];
         if ($category) {
-            $criteria['categ'] = $category;
+            $criteria['category'] = $category;
         }
         if ($featurings) {
             $criteria['featuring'] = $featurings;
@@ -161,7 +166,7 @@ class AlbumController extends AbstractController
         $albums = $this->albumRepository->findBy($criteria, null, $limit, $offset);
 
         if (empty($albums)) {
-            return new JsonResponse([
+            return $this->json([
                 'error' => true,
                 'message' => "Aucun album trouvé pour la page demandée.",
             ], JsonResponse::HTTP_NOT_FOUND);
@@ -252,8 +257,8 @@ class AlbumController extends AbstractController
             $albumData = [
                 'error' => false,
                 'id' => $album->getId(),
-                'nom' => $album->getNom(),
-                'categ' => $album->getCateg(),
+                'nom' => $album->getTitle(),
+                'category' => $album->getCategorie(),
                 'label' => $album->getArtistUserIdUser()->getLabel()->getName(),
                 'cover' => $album->getCover(),
                 'year' => $album->getYear(),
@@ -305,9 +310,7 @@ class AlbumController extends AbstractController
     } catch (\Exception $e) {
         return $this->json([
             'error' => true,
-            'message' => 'Error: ' . $e->getMessage(),
+            'message' => 'Erreur: ' . $e->getMessage(),
         ], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
     }
-}
-
 }
