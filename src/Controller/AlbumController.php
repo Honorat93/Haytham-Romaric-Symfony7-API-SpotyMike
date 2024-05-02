@@ -114,7 +114,7 @@ class AlbumController extends AbstractController
             if (empty($title) || strlen($title) < 1 || strlen($title) > 90 || !preg_match('/^[a-zA-Z0-9\s\'"!@#$%^&*()_+=\-,.?;:]+$/u', $title)) {
                 return $this->json([
                     'error' => true,
-                    'message' => "Erreur de validation des données pour le champ 'title'."
+                    'message' => "Erreur de validation des données."
                 ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
             }
     
@@ -134,7 +134,7 @@ class AlbumController extends AbstractController
                     if (in_array(strtolower($cat), $invalidCategories)) {
                         return $this->json([
                             'error' => true,
-                            'message' => "Les catégories ciblées sont invalides. Veuillez fournir des catégories valides."
+                            'message' => "Les catégories ciblées sont invalides."
                         ], JsonResponse::HTTP_BAD_REQUEST);
                     }
                 }
@@ -339,7 +339,7 @@ class AlbumController extends AbstractController
                     if (in_array(strtolower($cat), $invalidCategories)) {
                         return $this->json([
                             'error' => true,
-                            'message' => "Les catégories ciblées sont invalides. Veuillez fournir des catégories valides."
+                            'message' => "Les catégories ciblées sont invalides."
                         ], JsonResponse::HTTP_BAD_REQUEST);
                     }
                 }
@@ -493,7 +493,7 @@ public function searchAlbum(Request $request): JsonResponse
                 if (in_array(strtolower($cat), $invalidCategories)) {
                     return $this->json([
                         'error' => true,
-                        'message' => "Les catégories ciblées sont invalides. Veuillez fournir des catégories valides."
+                        'message' => "Les catégories ciblées sont invalides."
                     ], JsonResponse::HTTP_BAD_REQUEST);
                 }
             }
