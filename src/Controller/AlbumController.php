@@ -89,7 +89,7 @@ class AlbumController extends AbstractController
         $year = $request->query->get('year');
 
 
-        $additionalParams = array_diff(array_keys($request->query->all()), ['nom', 'category', 'cover', 'visibility']);
+        $additionalParams = array_diff(array_keys($request->query->all()), ['nom', 'category', 'currentPage', 'featuring']);
         if (!empty($additionalParams)) {
             return $this->json([
                 'error' => true,
@@ -97,7 +97,7 @@ class AlbumController extends AbstractController
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
-        if ($year && !is_numeric($year)) {
+        if ($year && (!is_numeric($year))) {
             return new JsonResponse([
                 'error' => true,
                 'message' => "L'année n'est pas valide."
@@ -122,10 +122,18 @@ class AlbumController extends AbstractController
             $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'Mike'];
             foreach ($categorieArray as $cat) {
                 if (in_array($cat, $invalidCategories)) {
-                    return $this->json(['error' => true, 'message' => "Les catégories ciblées sont invalides"], JsonResponse::HTTP_BAD_REQUEST);
+                    return $this->json(['error' => true, 'message' => "Les catégorie ciblée sont invalide"], JsonResponse::HTTP_BAD_REQUEST);
                 }
             }
         }
+
+                if (!empty($featurings) && !is_array($featurings)) {
+                    return new JsonResponse([
+                        'error' => true,
+                        'message' => "Les featuring ciblée sont invalide.",
+                    ], JsonResponse::HTTP_BAD_REQUEST);
+                }
+        
 
         $offset = ($currentPage - 1) * $limit;
 
