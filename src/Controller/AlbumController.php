@@ -223,6 +223,7 @@ class AlbumController extends AbstractController
     
               
    #[Route('/album/search', name: 'search_album', methods: ['GET'])]
+
 public function searchAlbum(Request $request): JsonResponse
 {
     try {
@@ -260,14 +261,14 @@ public function searchAlbum(Request $request): JsonResponse
         }
 
         if ($year && (!is_numeric($year))) {
-            return new JsonResponse([
+            return $this->json([
                 'error' => true,
                 'message' => "L'année n'est pas valide."
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
         if (!is_numeric($currentPage) || $currentPage < 1 || !is_numeric($limit) || $limit < 1) {
-            return new JsonResponse([
+            return $this->json([
                 'error' => true,
                 'message' => "Le paramètre de pagination est invalide. Veuillez fournir un numéro de page valide.",
             ], JsonResponse::HTTP_BAD_REQUEST);
@@ -277,10 +278,16 @@ public function searchAlbum(Request $request): JsonResponse
             $categoryArray = json_decode($category, true);
 
             if (!is_array($categoryArray) || empty($categoryArray)) {
-                return $this->json(['error' => true, 'message' => "Envoie un tableau dans la requete."], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                return $this->json([
+                    'error' => true,
+                    'message' => "Les données de catégorie fournies ne sont pas valides. Veuillez soumettre un tableau valide."
+                ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
             }
 
-            $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'mike'];
+
+            $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'Mike'];
+
+
             foreach ($categoryArray as $cat) {
                 if (in_array(strtolower($cat), $invalidCategories)) {
                     return $this->json([
@@ -290,6 +297,15 @@ public function searchAlbum(Request $request): JsonResponse
                 }
             }
         }
+
+
+        if (!empty($featurings) && !is_array($featurings)) {
+            return $this->json([
+                'error' => true,
+                'message' => "Les featuring ciblées sont invalides. Veuillez soumettre un tableau valide."
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+        
 
         $offset = ($currentPage - 1) * $limit;
 
@@ -317,7 +333,7 @@ public function searchAlbum(Request $request): JsonResponse
         $albums = $this->albumRepository->findBy($criteria, null, $limit, $offset);
 
         if (empty($albums)) {
-            return new JsonResponse([
+            return $this->json([
                 'error' => true,
                 'message' => "Aucun album trouvé pour la page demandée.",
             ], JsonResponse::HTTP_NOT_FOUND);
@@ -406,7 +422,10 @@ public function searchAlbum(Request $request): JsonResponse
             $albumData = [
                 'id' => $album->getId(),
                 'nom' => $album->getTitle(),
+
+
                 'categ' => $album->getCategorie(),
+
                 'label' => $album->getArtistUserIdUser()->getLabel()->getName(),
                 'cover' => $album->getCover(),
                 'year' => $album->getYear(),
@@ -458,10 +477,11 @@ public function searchAlbum(Request $request): JsonResponse
     } catch (\Exception $e) {
         return $this->json([
             'error' => true,
-            'message' => 'Error: ' . $e->getMessage(),
+            'message' => 'Erreur: ' . $e->getMessage(),
         ], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
     }
 }
+
     
     #[Route('/albums', name: 'get_albums', methods: ['GET'])]
     public function getAllAlbums(Request $request): JsonResponse
