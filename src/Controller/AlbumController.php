@@ -106,7 +106,7 @@ class AlbumController extends AbstractController
             if (!$user->getArtist()) {
                 return $this->json([
                     'error' => true,
-                    'message' => "Accès refusé. Vous n'avez pas l'autorisation pour créer un album."
+                    'message' => "Vous n'avez pas l'autorisation pour créer un album."
                 ], JsonResponse::HTTP_FORBIDDEN);
             }
 
@@ -114,7 +114,7 @@ class AlbumController extends AbstractController
             if (empty($title) || strlen($title) < 1 || strlen($title) > 90 || !preg_match('/^[a-zA-Z0-9\s\'"!@#$%^&*()_+=\-,.?;:]+$/u', $title)) {
                 return $this->json([
                     'error' => true,
-                    'message' => "Erreur de validation des données pour le champ 'title'."
+                    'message' => "Erreur de validation des données."
                 ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
             }
 
@@ -129,7 +129,7 @@ class AlbumController extends AbstractController
                     ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
                 }
 
-                $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'mike'];
+                $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul', 'country', 'hip hop', 'mike'];
                 foreach ($categorieArray as $cat) {
                     if (in_array(strtolower($cat), $invalidCategories)) {
                         return $this->json([
@@ -192,7 +192,7 @@ class AlbumController extends AbstractController
             if (!$artist) {
                 return $this->json([
                     'error' => true,
-                    'message' => "Accès refusé. Vous n'avez pas l'autorisation pour accéder à cet album."
+                    'message' => "Vous n'avez pas l'autorisation pour accéder à cet album."
                 ], JsonResponse::HTTP_FORBIDDEN);
             }
             $album->setArtistUserIdUser($artist);
@@ -334,7 +334,7 @@ class AlbumController extends AbstractController
                     ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
                 }
 
-                $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'mike'];
+                $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul', 'country', 'hip hop', 'mike'];
                 foreach ($categorieArray as $cat) {
                     if (in_array(strtolower($cat), $invalidCategories)) {
                         return $this->json([
@@ -376,7 +376,7 @@ class AlbumController extends AbstractController
                 if (!in_array($mimeType, ['image/jpeg', 'image/png'])) {
                     return new JsonResponse([
                         'error' => true,
-                        'message' => "Erreur sur le format du fichier qui n\'est pas pris en compte."
+                        'message' => "Erreur sur le format du fichier qui n'est pas pris en compte."
                     ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
                 }
 
@@ -491,7 +491,7 @@ class AlbumController extends AbstractController
                     if (in_array(strtolower($cat), $invalidCategories)) {
                         return $this->json([
                             'error' => true,
-                            'message' => "Les catégories ciblées sont invalides. Veuillez fournir des catégories valides."
+                            'message' => "Les catégories ciblées sont invalides."
                         ], JsonResponse::HTTP_BAD_REQUEST);
                     }
                 }
@@ -500,7 +500,7 @@ class AlbumController extends AbstractController
             if (!empty($featurings) && !is_array($featurings)) {
                 return $this->json([
                     'error' => true,
-                    'message' => "Les featuring ciblées sont invalides. Veuillez soumettre un tableau valide."
+                    'message' => "Les featuring ciblées sont invalides."
                 ], JsonResponse::HTTP_BAD_REQUEST);
             }
 
@@ -555,8 +555,8 @@ class AlbumController extends AbstractController
                         if ($artistUser !== null) {
                             $artistDetails = [
                                 'id' => $artistUser->getId(),
-                                'firstname' => $artistUser->getArtistUserIdUser()->getFirstName(),
-                                'lastname' => $artistUser->getArtistUserIdUser()->getLastName(),
+                                'firstname' => $artistUser->getFirstName(),
+                                'lastname' => $artistUser->getLastName(),
                                 'fullname' => $artistUser->getFullName(),
                                 'avatar' => null,
                                 'follower' => $artistUser->getFollower(),
@@ -587,8 +587,8 @@ class AlbumController extends AbstractController
                         if ($collabArtistUser !== null) {
                             $collabArtistDetails = [
                                 'id' => $collabArtistUser->getId(),
-                                'firstname' => $collabArtistUser->getArtistUserIdUser()->getFirstName(),
-                                'lastname' => $collabArtistUser->getArtistUserIdUser()->getLastName(),
+                                'firstname' => $collabArtistUser->getFirstName(),
+                                'lastname' => $collabArtistUser->getLastName(),
                                 'fullname' => $collabArtistUser->getFullName(),
                                 'avatar' => null,
                                 'follower' => $collabArtistUser->getFollower(),
@@ -631,8 +631,8 @@ class AlbumController extends AbstractController
                 $artist = $album->getArtistUserIdUser();
                 if ($artist !== null) {
                     $artistData = [
-                        'firstname' => $user->getArtistUserIdUser()->getFirstName(),
-                        'lastname' => $user->getArtistUserIdUser()->getLastName(),
+                        'firstname' => $user->getFirstName(),
+                        'lastname' => $user->getLastName(),
                         'fullname' => $artist->getFullName(),
                         'avatar' => null,
                         'follower' => $artist->getFollower(),
@@ -748,8 +748,8 @@ class AlbumController extends AbstractController
 
                         $artistDetails = [
                             'id' => $artistUser->getId(),
-                            'firstname' => $artistUser->getArtistUserIdUser()->getFirstName(),
-                            'lastname' => $artistUser->getArtistUserIdUser()->getLastName(),
+                            'firstname' => $artistUser->getFirstName(),
+                            'lastname' => $artistUser->getLastName(),
                             'fullname' => $artistUser->getFullName(),
                             'avatar' => null,
                             'follower' => $artistUser->getFollower(),
@@ -782,8 +782,8 @@ class AlbumController extends AbstractController
 
                         $collabArtistDetails = [
                             'id' => $collabArtistUser->getId(),
-                            'firstname' => $collabArtistUser->getArtistUserIdUser()->getFirstName(),
-                            'lastname' => $collabArtistUser->getArtistUserIdUser()->getLastName(),
+                            'firstname' => $collabArtistUser->getFirstName(),
+                            'lastname' => $collabArtistUser->getLastName(),
                             'fullname' => $collabArtistUser->getFullName(),
                             'avatar' => null,
                             'follower' => $collabArtistUser->getFollower(),
@@ -831,8 +831,8 @@ class AlbumController extends AbstractController
             $artist = $album->getArtistUserIdUser();
             if ($artist !== null) {
                 $artistData = [
-                    'firstname' => $user->getArtistUserIdUser()->getFirstName(),
-                    'lastname' => $user->getArtistUserIdUser()->getLastName(),
+                    'firstname' => $user->getFirstName(),
+                    'lastname' => $user->getLastName(),
                     'fullname' => $artist->getFullName(),
                     'avatar' => null,
                     'follower' => $artist->getFollower(),
@@ -928,8 +928,8 @@ class AlbumController extends AbstractController
                         if ($artistUser !== null) {
                             $artistDetails = [
                                 'id' => $artistUser->getId(),
-                                'firstname' => $artistUser->getArtistUserIdUser()->getFirstName(),
-                                'lastname' => $artistUser->getArtistUserIdUser()->getLastName(),
+                                'firstname' => $artistUser->getFirstName(),
+                                'lastname' => $artistUser->getLastName(),
                                 'fullname' => $artistUser->getFullName(),
                                 'avatar' => null,
                                 'follower' => $artistUser->getFollower(),
@@ -960,8 +960,8 @@ class AlbumController extends AbstractController
                         if ($collabArtistUser !== null) {
                             $collabArtistDetails = [
                                 'id' => $collabArtistUser->getId(),
-                                'firstname' => $collabArtistUser->getArtistUserIdUser()->getFirstName(),
-                                'lastname' => $collabArtistUser->getArtistUserIdUser()->getLastName(),
+                                'firstname' => $collabArtistUser->getFirstName(),
+                                'lastname' => $collabArtistUser->getLastName(),
                                 'fullname' => $collabArtistUser->getFullName(),
                                 'avatar' => null,
                                 'follower' => $collabArtistUser->getFollower(),
@@ -1004,8 +1004,8 @@ class AlbumController extends AbstractController
                 $artist = $album->getArtistUserIdUser();
                 if ($artist !== null) {
                     $artistData = [
-                        'firstname' => $artist->getUserIdUser()->getFirstName(),
-                        'lastname' => $artist->getUserIdUser()->getLastName(),
+                        'firstname' => $artist->getFirstName(),
+                        'lastname' => $artist->getLastName(),
                         'fullname' => $artist->getFullName(),
                         'avatar' => null,
                         'follower' => $artist->getFollower(),
