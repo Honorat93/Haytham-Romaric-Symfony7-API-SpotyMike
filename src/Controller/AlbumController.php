@@ -106,7 +106,7 @@ class AlbumController extends AbstractController
             if (!$user->getArtist()) {
                 return $this->json([
                     'error' => true,
-                    'message' => "Accès refusé. Vous n'avez pas l'autorisation pour créer un album."
+                    'message' => "Accès refusé. Vous n'avez pas l'autorisation pour accéder à cet album."
                 ], JsonResponse::HTTP_FORBIDDEN);
             }
     
@@ -114,7 +114,7 @@ class AlbumController extends AbstractController
             if (empty($title) || strlen($title) < 1 || strlen($title) > 90 || !preg_match('/^[a-zA-Z0-9\s\'"!@#$%^&*()_+=\-,.?;:]+$/u', $title)) {
                 return $this->json([
                     'error' => true,
-                    'message' => "Erreur de validation des données pour le champ 'title'."
+                    'message' => "Erreur de validation des données."
                 ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
             }
     
@@ -129,12 +129,12 @@ class AlbumController extends AbstractController
                     ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
                 }
     
-                $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'mike'];
+                $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul','country', 'hip hop', 'mike'];
                 foreach ($categorieArray as $cat) {
                     if (in_array(strtolower($cat), $invalidCategories)) {
                         return $this->json([
                             'error' => true,
-                            'message' => "Les catégories ciblées sont invalides. Veuillez fournir des catégories valides."
+                            'message' => "Les catégories ciblées sont invalides."
                         ], JsonResponse::HTTP_BAD_REQUEST);
                     }
                 }
@@ -334,12 +334,12 @@ class AlbumController extends AbstractController
                     ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
                 }
     
-                $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'mike'];
+                $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul','country', 'hip hop', 'mike'];
                 foreach ($categorieArray as $cat) {
                     if (in_array(strtolower($cat), $invalidCategories)) {
                         return $this->json([
                             'error' => true,
-                            'message' => "Les catégories ciblées sont invalides. Veuillez fournir des catégories valides."
+                            'message' => "Les catégories ciblées sont invalides."
                         ], JsonResponse::HTTP_BAD_REQUEST);
                     }
                 }
@@ -347,7 +347,6 @@ class AlbumController extends AbstractController
             }
     
                 
-            
 
             if ($cover !== null) {
                 $explodeData = explode(',', $cover);
@@ -487,14 +486,14 @@ public function searchAlbum(Request $request): JsonResponse
             }
 
 
-            $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul country', 'hip hop', 'Mike'];
+            $invalidCategories = ['rap', 'r\'n\'b', 'gospel', 'jazz', 'soul','country', 'hip hop', 'Mike'];
 
 
             foreach ($categoryArray as $cat) {
                 if (in_array(strtolower($cat), $invalidCategories)) {
                     return $this->json([
                         'error' => true,
-                        'message' => "Les catégories ciblées sont invalides. Veuillez fournir des catégories valides."
+                        'message' => "Les catégories ciblées sont invalides."
                     ], JsonResponse::HTTP_BAD_REQUEST);
                 }
             }
@@ -1103,5 +1102,111 @@ public function searchAlbum(Request $request): JsonResponse
         ], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
     }
 }
+
+         #[Route('/album/{id}/song', name: 'add_song', methods: ['POST'])]
+    public function addSong(Request $request, int $id): JsonResponse
+    {
+        try {
+            $dataMiddleware = $this->tokenVerifier->checkToken($request);
+            if (gettype($dataMiddleware) === 'boolean') {
+                return $this->json(
+                    $this->tokenVerifier->sendJsonErrorToken($dataMiddleware),
+                    JsonResponse::HTTP_UNAUTHORIZED
+                );
+            }
+            $user = $dataMiddleware;
+    
+            if (!$user) {
+                return $this->json([
+                    'error' => true,
+                    'message' => "Authentification requise. Vous devez être connecté pour effectuer cette action."
+                ], JsonResponse::HTTP_UNAUTHORIZED);
+            }
+    
+            $album = $this->entityManager->getRepository(Album::class)->find($id);
+
+            $songFile = $request->files->get('song');
+            $songId = $request->request->get('id');
+    
+            if (!$album) {
+                return $this->json([
+                    'error' => true,
+                    'message' => "Aucun album trouvé correspondant au nom fourni."
+                ], JsonResponse::HTTP_NOT_FOUND);
+            }
+    
+            if ($album->getArtistUserIdUser() !== $user->getArtist()) {
+                return $this->json([
+                    'error' => true,
+                    'message' => "Vous n'avez pas l'autorisation pour accéder à cet album."
+                ], JsonResponse::HTTP_FORBIDDEN);
+            }
+    
+            $coverDirectory = $this->getParameter('cover_directory');
+            $albumCover = $album->getCover();
+            if (!$albumCover || !file_exists($coverDirectory . '/' . $albumCover)) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le fichier de couverture de l'album n'existe pas."
+                ], JsonResponse::HTTP_NOT_FOUND);
+            }
+    
+            $songCover = $coverDirectory . '/' . $albumCover;
+    
+           
+            $fileSize = $songFile->getSize();
+            $minFileSize = 1 * 1024 * 1024;
+            $maxFileSize = 7 * 1024 * 1024;
+            if ($fileSize < $minFileSize || $fileSize > $maxFileSize) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb."
+                ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+            }
+    
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $mimeType = $finfo->file($songFile->getPathname());
+            $allowedMimeTypes = ['audio/mpeg', 'audio/mp3', 'audio/x-wav'];
+            if (!in_array($mimeType, $allowedMimeTypes)) {
+                return new JsonResponse([
+                    'error' => true,
+                    'message' => "Erreur sur le format du fichier qui n'est pas pris en charge."
+                ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+            }
+    
+            $localFilePath = $songFile->getPathname();
+    
+            $songTitle = pathinfo($localFilePath, PATHINFO_FILENAME);
+    
+            $url = $localFilePath;
+    
+            $song = new Song();
+            $song->setIdSong($songId); 
+            $song->setTitle($songTitle); 
+            $song->setUrl($url);
+            $song->setAlbum($album);
+            $song->setCover($songCover); 
+            $song->setCreateAt(new \DateTimeImmutable());
+    
+            $songDirectory = $this->getParameter('song_directory');
+            $songFileName = uniqid('song_') . '.' . $songFile->getClientOriginalExtension();
+            $songFile->move($songDirectory, $songFileName);
+            $song->setUrl($songFileName);
+    
+            $this->entityManager->persist($song);
+            $this->entityManager->flush();
+    
+            return $this->json([
+                'error' => false,
+                'message' => 'Album mis à avec succès.',
+                'idSong' => $song->getId()
+            ], JsonResponse::HTTP_CREATED);
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => true,
+                'message' => $e->getMessage()
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+    }
 
 }
