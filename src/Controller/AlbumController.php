@@ -81,7 +81,7 @@ class AlbumController extends AbstractController
             }
             
 
-            $id = $request->attributes->get('id');
+            $id = $request->query->get('id');
 
             if ($id === null) {
                 return $this->json([
@@ -268,7 +268,7 @@ class AlbumController extends AbstractController
                 ], JsonResponse::HTTP_UNAUTHORIZED);
             }
     
-            $page = $request->query->get("currentPage", 1);
+            $page = $request->query->get("currentPage");
             $limit = $request->query->get("limit", 5);
     
             if (!is_numeric($page) || $page < 1 || !is_numeric($limit) || $limit < 1) {
