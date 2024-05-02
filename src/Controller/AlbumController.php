@@ -678,6 +678,7 @@ class AlbumController extends AbstractController
 
 
 
+   
    #[Route('/album/{id}', name: 'get_album', methods: ['GET'])]
     public function getAlbum(Request $request, int $id): JsonResponse
     {
@@ -709,6 +710,21 @@ class AlbumController extends AbstractController
             }
 
             $album = $this->albumRepository->find($id);
+
+
+if (!$album) {
+    return $this->json([
+        'error' => true,
+        'message' => "L'album correspondant à l'ID spécifié n'a pas été trouvé."
+    ], Response::HTTP_NOT_FOUND);
+}
+
+if (!$album->getVisibility() && $album->getArtistUserIdUser() !== $user) {
+    return $this->json([
+        'error' => true,
+        'message' => "Vous n'êtes pas autorisé à accéder à cet album."
+    ], Response::HTTP_FORBIDDEN);
+}
     
             if (!$album->getVisibility() && $album->getArtistUserIdUser() !== $user) {
                 return $this->json([
